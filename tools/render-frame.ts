@@ -1,24 +1,15 @@
 // Renders theme/images/theme_frame.png (1x) and theme_frame@2x.png from tools/frame.html with headless Chrome.
-// Usage: node tools/render-frame.ts [query]   e.g. "px=1400&shade=0.45"
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { findChrome } from './browser.ts';
 
 const W = 3840, H = 160;
 const root = resolve(import.meta.dirname, '..');
 
-const candidates = [
-  process.env.CHROME,
-  'C:/Program Files/Google/Chrome/Application/chrome.exe',
-  'C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe',
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  '/usr/bin/google-chrome',
-  '/usr/bin/chromium',
-];
-const chrome = candidates.find((p) => p && existsSync(p));
-if (!chrome) throw new Error('No Chrome found; set CHROME to its path.');
+const chrome = findChrome();
 
 const url = pathToFileURL(join(root, 'tools', 'frame.html'));
 url.search = `w=${W}&h=${H}&${process.argv[2] ?? ''}`;

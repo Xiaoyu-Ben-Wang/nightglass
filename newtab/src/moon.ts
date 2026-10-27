@@ -1,5 +1,6 @@
 // The moon at its real phase, drawn as a lit disc inside a ticked ring.
 import { $ } from './dom.js';
+import { DAY_MS } from './math.js';
 import { onSettings } from './settings.js';
 
 const SYNODIC = 29.530588853;
@@ -8,8 +9,8 @@ const NAMES = ['New moon', 'Waxing crescent', 'First quarter', 'Waxing gibbous',
 const R = 20;
 
 /** Phase as a fraction of the cycle: 0 new, 0.5 full. */
-export function moonPhase(date = new Date()): number {
-  const days = (date.getTime() - NEW_MOON) / 86_400_000;
+function moonPhase(date = new Date()): number {
+  const days = (date.getTime() - NEW_MOON) / DAY_MS;
   return (((days % SYNODIC) + SYNODIC) % SYNODIC) / SYNODIC;
 }
 
@@ -44,5 +45,5 @@ export function initMoon(): void {
   $('moon-ticks').setAttribute('d', ticks());
   render();
   setInterval(render, 10 * 60_000);
-  onSettings((s) => $('moon').classList.toggle('off', !s.sky.moon));
+  onSettings((s) => $('moon').classList.toggle('is-off', !s.sky.moon));
 }

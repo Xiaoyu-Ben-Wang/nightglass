@@ -1,3 +1,4 @@
+// Saved links in the links panel, synced across devices.
 import { $, h } from './dom.js';
 import { leave } from './motion.js';
 import { load, save, uid, watch } from './store.js';

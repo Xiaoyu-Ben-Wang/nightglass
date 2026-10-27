@@ -18,10 +18,9 @@
 <body>
 <div class="view" id="view"><div class="scene" id="scene"><canvas id="c"></canvas></div><div class="shade"></div><canvas id="deco"></canvas></div>
 <script type="module">
-  // Stars and a small compass for the tab strip. The image is left-aligned and tiled, so the
-  // compass sits at a fixed x that most windows show (px), level with the tabs (py).
-  // ?w=3840&h=160&sh=220&px=1180&py=40&top=16&shade=0.35
-  // Chrome draws the frame image about 16px above the tab strip's top, so `top` is where decoration starts.
+  // Stars and a small compass for the tab strip. The image is left-aligned and tiled, so the compass sits at a
+  // fixed x most windows show (px), level with the tabs (py). Chrome draws the frame image about 16px above
+  // the tab strip, so `top` is where decoration starts.
   import sky from '../newtab/vendor/backdrops/sky.js';
 
   const q = new URLSearchParams(location.search);

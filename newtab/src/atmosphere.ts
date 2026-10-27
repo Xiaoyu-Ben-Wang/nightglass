@@ -1,10 +1,7 @@
-// The sun and clouds, drawn with WebGL2. Clouds are three inks in a stable-fluids simulation (high wisps,
-// mid puffs, low banks); the cursor stirs the water, and each ink relaxes back toward its own drifting
-// noise field. Light is marched toward the sun: each cloud shades itself and scatters light forward near
-// the sun, the sun dims by the optical depth in front of it, and clouds cast shadows across the sky whose
-// lit gaps are the god rays.
+// The sun, clouds and god rays in WebGL2: three cloud inks in a stable-fluids simulation, lit by sunlight marched through them.
+import { clamp, mixRGB } from './math.js';
 
-export interface SkyLight {
+export interface AtmosphereInput {
   cover: number;
   dark: number;
   /** 1 in full day, 0 at night. */
@@ -164,10 +161,10 @@ uniform float uSunVis, uCloudOn;
 void main() {
   vec2 toSun = (uSun - vUv) * uRes;
   // Toward the sun by day, blending to straight up as it sets, so the shading never jumps.
-  float w = smoothstep(0.0, 0.05, uSunVis);
-  vec2 dir = toSun / max(length(toSun), 0.001) * w + vec2(0.0, 1.0) * (1.0 - w);
+  float toward = smoothstep(0.0, 0.05, uSunVis);
+  vec2 dir = toSun / max(length(toSun), 0.001) * toward + vec2(0.0, 1.0) * (1.0 - toward);
   dir /= max(length(dir), 0.001);
-  // About a cloud's thickness (~100px at 1080p): each cloud shades itself, not its neighbours.
+  // About a cloud's thickness (~100px at 1080p): each cloud shades itself, not its neighbors.
   float unit = min(uRes.x, uRes.y) * 0.008;
   vec3 tau = vec3(0.0);
   float s = unit * 0.5;
@@ -230,7 +227,7 @@ void main() {
   // Blurred along the ray, which hides the march's jitter without softening the beams' edges.
   float t0 = texture(uRays, vUv).r;
   float T = (t0 + along(uSun + rel * 0.975, t0) + along(uSun + rel * 1.025, t0)) / 3.0;
-  // Off-screen neighbours carry no shadow information: they count as neither lit nor shadowed.
+  // Off-screen neighbors carry no shadow information: they count as neither lit nor shadowed.
   float lo = 1.0, hi = 0.0;
   for (int i = 0; i < 6; i++) {
     float ang = (i < 2 ? 0.05 : i < 4 ? 0.14 : 0.3) * (i % 2 == 0 ? 1.0 : -1.0);
@@ -462,15 +459,15 @@ function relax(rate: number, cover: number): void {
   dye.swap();
 }
 
-const mix = (a: number[], b: number[], t: number) => a.map((v, i) => v + (b[i]! - v) * t);
-const clamp = (v: number) => Math.min(1, Math.max(0, v));
+// Below this the sun is treated as gone and its passes are skipped.
+const SUN_VISIBLE = 0.001;
 
-export function renderSky(dt: number, p: SkyLight): void {
+export function renderAtmosphere(dt: number, p: AtmosphereInput): void {
   if (!gl) return;
   const cloudy = p.cover >= 0.005;
   const sunVis = clamp((p.sun.elev + 1.5) / 3) * p.sun.vis * p.day;
   if (!cloudy) fresh = true;
-  if (!cloudy && sunVis <= 0.001) {
+  if (!cloudy && sunVis <= SUN_VISIBLE) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clearColor(0, 0, 0, 0);
@@ -493,25 +490,25 @@ export function renderSky(dt: number, p: SkyLight): void {
   const sun = [p.sun.x, 1 - p.sun.y];
   const sunR = Math.max(22, Math.min(canvas.width, canvas.height) * 0.04);
   // White at height, orange-red at the horizon.
-  const sunCol = mix([1, 0.52, 0.3], [1, 0.92, 0.78], clamp((p.sun.elev + 1) / 12));
+  const sunCol = mixRGB([1, 0.52, 0.3], [1, 0.92, 0.78], clamp((p.sun.elev + 1) / 12));
   const cloudOn = cloudy ? 1 : 0;
   if (cloudy) pass('light', light, { uSource: dye.read, uSun: sun, uRes: res, uSunVis: sunVis, uCloudOn: cloudOn });
-  if (sunVis > 0.001) {
+  if (sunVis > SUN_VISIBLE) {
     pass('rays', rays, { uSource: dye.read, uSun: sun, uRes: res, uCloudOn: cloudOn });
     pass('beams', beams, { uRays: rays, uSun: sun, uRes: res });
   }
-  const lit = mix(mix([0.36, 0.39, 0.45], [0.95, 0.96, 0.98], p.day), [0.62, 0.65, 0.7], p.dark * 0.6);
-  const shade = mix(mix([0.16, 0.18, 0.22], [0.58, 0.62, 0.69], p.day), [0.3, 0.32, 0.37], p.dark * 0.7);
-  const low = mix(mix([0.2, 0.22, 0.27], [0.7, 0.74, 0.8], p.day), [0.34, 0.36, 0.41], p.dark * 0.7);
+  const lit = mixRGB(mixRGB([0.36, 0.39, 0.45], [0.95, 0.96, 0.98], p.day), [0.62, 0.65, 0.7], p.dark * 0.6);
+  const shade = mixRGB(mixRGB([0.16, 0.18, 0.22], [0.58, 0.62, 0.69], p.day), [0.3, 0.32, 0.37], p.dark * 0.7);
+  const low = mixRGB(mixRGB([0.2, 0.22, 0.27], [0.7, 0.74, 0.8], p.day), [0.34, 0.36, 0.41], p.dark * 0.7);
   pass('display', null, {
     uSource: dye.read, uBeams: beams, uLight: light, uSun: sun, uRes: res, uSunR: sunR, uSunCol: sunCol, uSunVis: sunVis,
-    uRayStrength: sunVis > 0.001 ? 1 : 0, uCloudOn: cloudOn,
-    uGolden: sunVis > 0.001 ? 1 - clamp(p.sun.elev / 12) : 0,
+    uRayStrength: sunVis > SUN_VISIBLE ? 1 : 0, uCloudOn: cloudOn,
+    uGolden: sunVis > SUN_VISIBLE ? 1 - clamp(p.sun.elev / 12) : 0,
     uLit: lit, uShade: shade, uLow: low, uOpacity: (0.38 + 0.18 * p.cover) * (0.75 + 0.25 * p.day),
   });
 }
 
-export function initSky(el: HTMLCanvasElement): void {
+export function initAtmosphere(el: HTMLCanvasElement): void {
   canvas = el;
   gl = canvas.getContext('webgl2', { alpha: true, premultipliedAlpha: true, antialias: false, depth: false });
   if (!gl || !gl.getExtension('EXT_color_buffer_float')) {
@@ -530,7 +527,7 @@ export function initSky(el: HTMLCanvasElement): void {
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
   gl.enableVertexAttribArray(0);
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-  resizeSky();
+  resizeAtmosphere();
   addEventListener('pointermove', (e) => {
     const x = e.clientX / innerWidth, y = 1 - e.clientY / innerHeight;
     if (px >= 0) strokes.push([px, py, x, y]);
@@ -540,7 +537,7 @@ export function initSky(el: HTMLCanvasElement): void {
   document.documentElement.addEventListener('pointerleave', () => { px = py = -1; });
 }
 
-export function resizeSky(): void {
+export function resizeAtmosphere(): void {
   if (!gl) return;
   // Soft light and clouds don't need device pixels.
   canvas.width = innerWidth;

@@ -1,15 +1,16 @@
 // Current conditions from Open-Meteo (free, no API key), cached for 30 minutes.
 import { $, h } from './dom.js';
+import { between, mixRGB, rgb, type RGB } from './math.js';
+import { setConditions } from './scene.js';
 import { onSettings, settings, updateSettings, type Place, type Settings } from './settings.js';
 import { load, save } from './store.js';
-import { setConditions } from './weatherfx.js';
 
 interface Reading { key: string; at: number; temp: number; code: number; day: boolean; hi: number; lo: number; tz: string; wind?: number; windDir?: number }
 
 const TTL = 30 * 60_000;
 const el = $<HTMLButtonElement>('weather');
 
-// WMO weather interpretation codes
+/** A short label for a WMO weather interpretation code. */
 function describe(code: number, day: boolean): string {
   if (code === 0) return day ? 'Clear' : 'Clear night';
   if (code <= 2) return 'Partly cloudy';
@@ -21,23 +22,6 @@ function describe(code: number, day: boolean): string {
   if (code <= 82) return 'Showers';
   if (code <= 86) return 'Snow showers';
   return 'Thunderstorm';
-}
-
-export async function geocode(query: string): Promise<Place | null> {
-  const url = new URL('https://geocoding-api.open-meteo.com/v1/search');
-  // Open-Meteo matches a place name only, so "Springfield, Illinois, US" searches "Springfield"
-  // and the rest picks among the matches.
-  const [name, ...rest] = query.split(',').map((s) => s.trim()).filter(Boolean);
-  if (!name) return null;
-  url.search = new URLSearchParams({ name, count: '10', format: 'json' }).toString();
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Geocoding failed (${res.status})`);
-  type Hit = { name: string; admin1?: string; country?: string; country_code?: string; latitude: number; longitude: number; timezone?: string };
-  const hits: Hit[] = (await res.json()).results ?? [];
-  const hint = rest.join(' ').toLowerCase();
-  const hit = hits.find((h) => [h.admin1, h.country, h.country_code].some((x) => x && hint.includes(x.toLowerCase()))) ?? hits[0];
-  if (!hit) return null;
-  return { name: [hit.name, hit.admin1, hit.country_code].filter(Boolean).join(', '), lat: hit.latitude, lon: hit.longitude, tz: hit.timezone };
 }
 
 async function read(place: Place, fahrenheit: boolean): Promise<Reading> {
@@ -73,24 +57,22 @@ async function read(place: Place, fahrenheit: boolean): Promise<Reading> {
   return reading;
 }
 
-// Temperature colour by °C: icy blue when cold, gold when mild to warm, red when extremely hot.
-const TEMP_STOPS: [number, [number, number, number]][] = [
-  [-20, [190, 214, 255]],
-  [-5, [125, 185, 245]],
-  [5, [97, 175, 239]],
-  [10, [86, 182, 194]],
-  [15, [200, 190, 150]],
-  [19, [209, 154, 102]],
-  [29, [209, 154, 102]],
-  [35, [226, 120, 84]],
-  [40, [232, 84, 84]],
+// Temperature color by °C: icy blue when cold, gold when mild to warm, red when extremely hot.
+const TEMP_STOPS: { at: number; color: RGB }[] = [
+  { at: -20, color: [190, 214, 255] },
+  { at: -5, color: [125, 185, 245] },
+  { at: 5, color: [97, 175, 239] },
+  { at: 10, color: [86, 182, 194] },
+  { at: 15, color: [200, 190, 150] },
+  { at: 19, color: [209, 154, 102] },
+  { at: 29, color: [209, 154, 102] },
+  { at: 35, color: [226, 120, 84] },
+  { at: 40, color: [232, 84, 84] },
 ];
 
-export function tempColour(celsius: number): string {
-  const i = TEMP_STOPS.findIndex(([at]) => at > celsius);
-  const [a, b] = i === 0 ? [TEMP_STOPS[0]!, TEMP_STOPS[0]!] : i < 0 ? [TEMP_STOPS.at(-1)!, TEMP_STOPS.at(-1)!] : [TEMP_STOPS[i - 1]!, TEMP_STOPS[i]!];
-  const t = a === b ? 0 : (celsius - a[0]) / (b[0] - a[0]);
-  return `rgb(${a[1].map((v, j) => Math.round(v + (b[1][j]! - v) * t)).join(', ')})`;
+function tempColor(celsius: number): string {
+  const [a, b, t] = between(TEMP_STOPS, celsius);
+  return rgb(mixRGB(a.color, b.color, t));
 }
 
 let latest = 0;
@@ -112,7 +94,7 @@ async function render(s: Settings): Promise<void> {
     const celsius = s.fahrenheit ? (r.temp - 32) * 5 / 9 : r.temp;
     el.title = `High ${Math.round(r.hi)}°, low ${Math.round(r.lo)}°`;
     const temp = h('span', { class: 'weather__temp' }, `${Math.round(r.temp)}°`);
-    temp.style.color = tempColour(celsius);
+    temp.style.color = tempColor(celsius);
     el.replaceChildren(
       temp,
       h('span', { class: 'weather__sky' }, describe(r.code, r.day)),

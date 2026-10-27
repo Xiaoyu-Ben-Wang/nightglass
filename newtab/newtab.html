@@ -14,8 +14,8 @@
 <body>
 <canvas id="sky" class="sky" aria-hidden="true"></canvas>
 <div class="horizon" aria-hidden="true"></div>
-<canvas id="weather-fx" class="weather-fx" aria-hidden="true"></canvas>
-<canvas id="clouds" class="weather-fx" aria-hidden="true"></canvas>
+<canvas id="weather-layer" class="layer" aria-hidden="true"></canvas>
+<canvas id="atmosphere" class="layer" aria-hidden="true"></canvas>
 <figure class="moon" id="moon">
   <svg viewBox="-34 -34 68 68" aria-hidden="true">
     <path class="moon__ticks" id="moon-ticks"></path>
@@ -33,12 +33,12 @@
     <label class="search__icon" for="search-input" title="Search">
       <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.4 10.4L14 14"/></svg>
     </label>
-    <input class="search__input" id="search-input" type="search" name="q" placeholder="Search" aria-label="Search the web" autocomplete="off">
+    <input class="search__input" id="search-input" type="search" placeholder="Search" aria-label="Search the web" autocomplete="off">
   </form>
 </div>
 
 <div class="corner corner--tr" data-widget="weather">
-  <button class="weather" id="weather" title="Weather"></button>
+  <button class="weather" id="weather"></button>
 </div>
 
 <main class="center">
@@ -51,7 +51,7 @@
     <input class="ask__input" id="name-input" maxlength="40" autocomplete="off">
   </form>
 
-  <section class="focus" id="focus" data-widget="focus">
+  <section class="focus" data-widget="focus">
     <form class="ask" id="focus-form">
       <label class="ask__label" for="focus-input">What is your main focus today?</label>
       <input class="ask__input" id="focus-input" maxlength="120" autocomplete="off">
@@ -103,11 +103,12 @@
 <section class="panel ds-panel panel--bl" id="settings-panel" hidden aria-label="Settings">
   <header class="ds-panel__head"><h2 class="ds-label">Settings</h2></header>
   <form class="settings" id="settings-form">
-    <div class="row">
-      <label class="ds-field grow"><span class="ds-label">Name</span><input class="ds-input" name="name" maxlength="40" autocomplete="off"></label>
-      <label class="ds-switch"><input type="checkbox" name="hour24">24-hour</label>
-    </div>
-    <fieldset class="group group--3">
+    <fieldset class="group">
+      <legend class="ds-label">General</legend>
+      <label class="field wide"><span class="field__label">Name</span><input class="ds-input" name="name" maxlength="40" autocomplete="off"></label>
+      <label class="ds-switch wide"><input type="checkbox" name="hour24">24-hour clock</label>
+    </fieldset>
+    <fieldset class="group">
       <legend class="ds-label">Show</legend>
       <label class="ds-switch"><input type="checkbox" name="show.links">Links</label>
       <label class="ds-switch"><input type="checkbox" name="show.search">Search</label>
@@ -118,26 +119,29 @@
     </fieldset>
     <fieldset class="group">
       <legend class="ds-label">Weather</legend>
-      <div class="locate wide">
-        <input class="ds-input locate__input" id="place-input" name="place" placeholder="City" autocomplete="off" spellcheck="false" aria-label="Weather location">
-        <button class="locate__btn" type="button" id="place-locate" title="Use my location" aria-label="Use my location">
-          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="4.5"/><path d="M8 0.5v3M8 12.5v3M0.5 8h3M12.5 8h3"/><circle class="dot" cx="8" cy="8" r="1.2"/></svg>
-        </button>
+      <div class="field wide">
+        <label class="field__label" for="place-input">Location</label>
+        <div class="locate">
+          <input class="ds-input locate__input" id="place-input" name="place" placeholder="City" autocomplete="off" spellcheck="false">
+          <button class="locate__btn" type="button" id="place-locate" title="Use my location" aria-label="Use my location">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="4.5"/><path d="M8 0.5v3M8 12.5v3M0.5 8h3M12.5 8h3"/><circle class="locate__dot" cx="8" cy="8" r="1.2"/></svg>
+          </button>
+        </div>
       </div>
       <span class="ds-hint wide" id="place-status"></span>
       <label class="ds-switch"><input type="checkbox" name="weatherFx">Effects</label>
-      <label class="ds-switch"><input type="checkbox" name="fahrenheit">°F</label>
+      <label class="ds-switch unit" aria-label="Fahrenheit"><span>°C</span><input type="checkbox" name="fahrenheit"><span>°F</span></label>
     </fieldset>
     <fieldset class="group">
       <legend class="ds-label">Sun &amp; moon</legend>
-      <label class="ds-switch"><input type="checkbox" name="daylight">Follow the sun</label>
+      <label class="ds-switch" title="The sun, and the sky's colour through the day"><input type="checkbox" name="daylight">Daylight</label>
       <label class="ds-switch"><input type="checkbox" name="sky.moon">Moon</label>
     </fieldset>
     <fieldset class="group">
       <legend class="ds-label">Stars</legend>
-      <label class="ds-switch"><input type="checkbox" name="sky.chart">Star chart</label>
+      <label class="ds-switch"><input type="checkbox" name="sky.chart">Chart</label>
       <label class="ds-switch"><input type="checkbox" name="sky.meteors">Meteors</label>
-      <label class="spin wide"><span class="ds-label">Spin</span>
+      <label class="field wide"><span class="field__label">Spin</span>
         <select class="ds-select" name="spin">
           <option value="off">Off</option>
           <option value="slow">Slow</option>
@@ -146,10 +150,10 @@
         </select>
       </label>
     </fieldset>
-    <details class="more">
-      <summary class="ds-label">Quote source</summary>
-      <input class="ds-input" name="quoteApi" type="url" placeholder="Bundled quotes only" autocomplete="off" spellcheck="false" aria-label="Quote API">
-    </details>
+    <fieldset class="group">
+      <legend class="ds-label">Quote</legend>
+      <label class="field wide"><span class="field__label">Source</span><input class="ds-input" name="quoteApi" type="url" placeholder="Bundled quotes only" autocomplete="off" spellcheck="false"></label>
+    </fieldset>
   </form>
 </section>
 </body>

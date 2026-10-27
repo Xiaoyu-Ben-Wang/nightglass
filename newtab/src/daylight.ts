@@ -1,10 +1,8 @@
 // Recolors the sky by the sun's elevation: night, twilight, dusk or dawn, and a muted day blue.
+import { between, clamp, DAY_MS, hex, lerp, mixRGB, rgb, type RGB } from './math.js';
 import { onSettings, settings } from './settings.js';
 
-type RGB = [number, number, number];
 interface Stop { at: number; glow: RGB; mid: RGB; deep: RGB; ink: RGB }
-
-const hex = (h: string): RGB => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)) as RGB;
 const stop = (at: number, glow: string, mid: string, deep: string, ink: string): Stop =>
   ({ at, glow: hex(glow), mid: hex(mid), deep: hex(deep), ink: hex(ink) });
 
@@ -36,7 +34,7 @@ const RAD = Math.PI / 180;
 
 /** Sun elevation, hour angle and declination (USNO low-precision formulas, good to about a degree). */
 function sunPosition(date: Date, lat: number, lon: number): { elev: number; ha: number; dec: number } {
-  const d = date.getTime() / 86_400_000 - 10_957.5; // days since J2000
+  const d = date.getTime() / DAY_MS - 10_957.5; // days since J2000
   const g = (357.529 + 0.98560028 * d) * RAD;
   const q = 280.459 + 0.98564736 * d;
   const L = (q + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * RAD;
@@ -50,12 +48,11 @@ function sunPosition(date: Date, lat: number, lon: number): { elev: number; ha: 
   return { elev, ha, dec };
 }
 
-/** Sun elevation in degrees. */
-export function sunElevation(date: Date, lat: number, lon: number): number {
-  return sunPosition(date, lat, lon).elev;
+/** The weather location, or without one a mid latitude and the longitude implied by the time zone. */
+function guessPlace(now: Date): { lat: number; lon: number } {
+  return settings().place ?? { lat: 40, lon: -now.getTimezoneOffset() / 4 };
 }
 
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 // Height on screen from the share of today's peak elevation; the square root keeps the sun high for most of the day.
 const arc = (share: number) => 1.04 - 0.94 * Math.sign(share) * Math.sqrt(Math.abs(clamp(share, -0.2, 1)));
 
@@ -71,7 +68,7 @@ export function sunPlace(): { x: number; y: number; elev: number } {
     return { x: +(q.get('sunx') ?? 0.3), y: arc(elev / 45), elev };
   }
   const now = new Date();
-  const place = settings().place ?? { lat: 40, lon: -now.getTimezoneOffset() / 4 };
+  const place = guessPlace(now);
   const { elev, ha, dec } = sunPosition(now, place.lat, place.lon);
   const noon = 90 - Math.abs(place.lat - dec / RAD);
   // Hour angle of sunset; polar day and night fall back to a half turn.
@@ -85,43 +82,29 @@ export function sunPlace(): { x: number; y: number; elev: number } {
   };
 }
 
-function mix(a: RGB, b: RGB, t: number): string {
-  return `rgb(${a.map((v, i) => Math.round(v + (b[i]! - v) * t)).join(', ')})`;
-}
-
 function horizon(elev: number): { low: string; mid: string; a: number } {
-  const first = WARM[0]!, last = WARM[WARM.length - 1]!;
-  const i = WARM.findIndex((w) => w.at > elev);
-  const [a, b] = elev <= first.at ? [first, first] : i < 0 ? [last, last] : [WARM[i - 1]!, WARM[i]!];
-  const t = a === b ? 0 : (elev - a.at) / (b.at - a.at);
-  return { low: mix(a.low, b.low, t), mid: mix(a.mid, b.mid, t), a: +(a.a + (b.a - a.a) * t).toFixed(3) };
+  const [a, b, t] = between(WARM, elev);
+  return { low: rgb(mixRGB(a.low, b.low, t)), mid: rgb(mixRGB(a.mid, b.mid, t)), a: +lerp(a.a, b.a, t).toFixed(3) };
 }
 
 function palette(elev: number): Record<'glow' | 'mid' | 'deep' | 'ink', string> {
-  const first = STOPS[0]!, last = STOPS[STOPS.length - 1]!;
-  const i = STOPS.findIndex((s) => s.at > elev);
-  const [a, b] = elev <= first.at ? [first, first] : i < 0 ? [last, last] : [STOPS[i - 1]!, STOPS[i]!];
-  const t = a === b ? 0 : (elev - a.at) / (b.at - a.at);
-  return { glow: mix(a.glow, b.glow, t), mid: mix(a.mid, b.mid, t), deep: mix(a.deep, b.deep, t), ink: mix(a.ink, b.ink, t) };
-}
-
-function elevationNow(): number {
-  const pinned = new URLSearchParams(location.search).get('sun');
-  if (pinned !== null) return +pinned;
-  const now = new Date();
-  // Without a weather location, guess longitude from the time zone and assume a mid latitude.
-  const place = settings().place ?? { lat: 40, lon: -now.getTimezoneOffset() / 4 };
-  return sunElevation(now, place.lat, place.lon);
+  const [a, b, t] = between(STOPS, elev);
+  return { glow: rgb(mixRGB(a.glow, b.glow, t)), mid: rgb(mixRGB(a.mid, b.mid, t)), deep: rgb(mixRGB(a.deep, b.deep, t)), ink: rgb(mixRGB(a.ink, b.ink, t)) };
 }
 
 const root = document.documentElement;
 const PROPS = ['--sky-glow', '--sky-mid', '--sky-deep', '--sky-ink'] as const;
 let applied = '';
+let night = 1;
+
+/** 0 by day, 1 once the sun is 8° down. */
+export const nightness = (): number => night;
 
 function apply(on: boolean): void {
-  const elev = on ? elevationNow() : -90;
-  // 0 by day, 1 once the sun is 8° down; the moon fades with it.
-  root.style.setProperty('--nightness', String(Math.min(1, Math.max(0, -elev / 8))));
+  const elev = on ? sunPlace().elev : -90;
+  night = clamp(-elev / 8);
+  // The moon fades with it.
+  root.style.setProperty('--nightness', String(night));
   const w = horizon(elev);
   root.style.setProperty('--horizon-low', w.low);
   root.style.setProperty('--horizon-mid', w.mid);

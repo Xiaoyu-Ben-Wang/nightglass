@@ -12,6 +12,8 @@ const targets: [string, string, string[]][] = [
   ['Nightglass New Tab', 'newtab', ['manifest.json', 'newtab.html', 'newtab.css', 'onedark.css', 'dist', 'data', 'vendor']],
 ];
 
+// A clean build, so modules that were renamed or removed don't ship.
+rmSync(join(root, 'newtab', 'dist'), { recursive: true, force: true });
 execSync('pnpm run build', { cwd: root, stdio: 'inherit' });
 
 for (const [name, src, files] of targets) {

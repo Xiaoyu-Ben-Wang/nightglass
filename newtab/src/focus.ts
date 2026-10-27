@@ -1,3 +1,4 @@
+// Today's main focus: one line, cleared at midnight, kept on this device.
 import { $ } from './dom.js';
 import { load, save, watch } from './store.js';
 import { today } from './time.js';

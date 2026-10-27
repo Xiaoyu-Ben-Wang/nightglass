@@ -1,11 +1,12 @@
-// Weather drawn over the sky from the current WMO code: the sun, clouds, fog, rain, snow, hail and lightning.
-import { initSky, renderSky, resizeSky } from './clouds.js';
-import { sunPlace } from './daylight.js';
+// The weather scene: turns a WMO code into fog, rain, snow, hail and lightning, and runs the frame loop for the atmosphere.
+import { initAtmosphere, renderAtmosphere, resizeAtmosphere } from './atmosphere.js';
+import { nightness, sunPlace } from './daylight.js';
+import { clamp, mixRGB, rgba, type RGB } from './math.js';
+import { reducedMotion } from './motion.js';
 import { onSettings, settings } from './settings.js';
 
 export interface Conditions { code: number; day: boolean; wind?: number; windDir?: number }
 
-type RGB = [number, number, number];
 interface Scene { sun: number; cover: number; dark: number; fog: number; rain: number; snow: number; hail: number; storm: number }
 const NONE: Scene = { sun: 1, cover: 0, dark: 0, fog: 0, rain: 0, snow: 0, hail: 0, storm: 0 };
 const KEYS = Object.keys(NONE) as (keyof Scene)[];
@@ -46,9 +47,13 @@ function sceneFor(code: number): Scene {
 }
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
-const clamp = (v: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
-const mixRGB = (a: RGB, b: RGB, t: number): RGB => a.map((v, i) => v + (b[i]! - v) * t) as RGB;
-const rgba = (c: RGB, a: number) => `rgba(${c.map(Math.round).join(', ')}, ${a})`;
+// Rain's lean (horizontal travel per unit of fall) per km/h of wind, and its limit.
+const LEAN_PER_KMH = 1 / 70;
+const MAX_LEAN = 0.6;
+// The atmosphere's cloud drift, in screen widths per second, for each unit of lean.
+const DRIFT_PER_LEAN = 0.012;
+const COVER_KEY = 'sky-cover';
+const SCENE_KEY = 'sky-scene';
 
 function canvasOf(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
   const c = document.createElement('canvas');
@@ -94,7 +99,6 @@ interface Splash { x: number; y: number; t: number; z: number }
 interface Band { x: number; y: number; w: number; speed: number; sprite?: HTMLCanvasElement }
 
 const root = document.documentElement;
-const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
@@ -145,10 +149,10 @@ function newStone(anywhere = false): Stone {
   return { x: spawnX(), y: anywhere ? rand(-h, h) : rand(-h * 0.3, -10), z, vx: 0, vy: rand(500, 800) * (0.6 + z * 0.6), gy: h - rand(2, 40) * (1.2 - z), bounces: 0 };
 }
 
-/** 1 in full day, 0 at night. Follows daylight.ts when it runs, otherwise the weather's own day flag. */
+/** 1 in full day, 0 at night: the sun's elevation when following it, otherwise the reading's day flag. */
 function dayness(): number {
   if (pinned && new URLSearchParams(location.search).get('sun') === null) return pinned.day ? 1 : 0;
-  if (settings().daylight) return 1 - (parseFloat(root.style.getPropertyValue('--nightness')) || 0);
+  if (settings().daylight) return 1 - nightness();
   return (fromApi ?? pinned)?.day ? 1 : 0;
 }
 
@@ -163,7 +167,7 @@ function retone(d: number): void {
   for (const b of bands) b.sprite = fogSprite(b.w, fogCol);
 }
 
-/** Overcast deck: a flat sheet of cloud colour that hides the stars and dims the sky. */
+/** Overcast deck: a flat sheet of cloud color that hides the stars and dims the sky. */
 function drawDeck(): void {
   const a = clamp((cur.cover - 0.45) * 1.8) * (0.4 + 0.25 * cur.dark);
   if (a <= 0.005) return;
@@ -341,7 +345,7 @@ function frame(t: number, dt: number): void {
   if (cover !== lastCover) {
     lastCover = cover;
     root.style.setProperty('--weather-cover', cover);
-    try { localStorage.setItem('weatherfx:cover', cover); } catch {}
+    try { localStorage.setItem(COVER_KEY, cover); } catch {}
   }
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -350,8 +354,8 @@ function frame(t: number, dt: number): void {
   drawFog(dt);
   drawStorm(t, dt);
   const sun = sunPlace();
-  renderSky(dt, {
-    cover: cur.cover, dark: cur.dark, day: d, wind: windX * 0.012, still: reduced.matches,
+  renderAtmosphere(dt, {
+    cover: cur.cover, dark: cur.dark, day: d, wind: windX * DRIFT_PER_LEAN, still: reducedMotion.matches,
     sun: { ...sun, vis: settings().daylight ? cur.sun : 0 },
   });
   drawRain(dt, d);
@@ -378,7 +382,7 @@ function loop(ms: number): void {
 }
 
 function start(): void {
-  if (reduced.matches) {
+  if (reducedMotion.matches) {
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     // One still frame with the sun, clouds and fog; no falling particles.
     Object.assign(cur, target, { rain: 0, snow: 0, hail: 0, storm: 0 });
@@ -395,11 +399,11 @@ function apply(): void {
   // A new tab shows the weather at once; later changes fade.
   if (!primed && c) { Object.assign(cur, target); primed = true; }
   if (c && enabled && !pinned) {
-    try { localStorage.setItem('weatherfx:scene', JSON.stringify(target)); } catch {}
+    try { localStorage.setItem(SCENE_KEY, JSON.stringify(target)); } catch {}
   }
   if (c?.wind !== undefined && c.windDir !== undefined) {
     // windDir is where the wind comes from; westerlies push the rain to the right.
-    windX = clamp(c.wind / 70, 0.04, 0.6) * -Math.sin(c.windDir * Math.PI / 180);
+    windX = clamp(c.wind * LEAN_PER_KMH, 0.04, MAX_LEAN) * -Math.sin(c.windDir * Math.PI / 180);
   }
   start();
 }
@@ -412,30 +416,30 @@ export function setConditions(c: Conditions | null): void {
   apply();
 }
 
-export function initWeatherFx(): void {
-  canvas = document.getElementById('weather-fx') as HTMLCanvasElement;
+export function initScene(): void {
+  canvas = document.getElementById('weather-layer') as HTMLCanvasElement;
   ctx = canvas.getContext('2d')!;
-  // ?weather=<WMO code>[&day=0] pins the conditions for development.
+  // ?weather=<WMO code>[&day=0][&wind=<km/h>] pins the conditions for development.
   const q = new URLSearchParams(location.search);
   const code = q.get('weather');
   if (code !== null) pinned = { code: +code, day: q.get('day') !== '0', wind: +(q.get('wind') ?? 15), windDir: 260 };
   // The last cover, so the moon doesn't show before the weather loads.
-  try { root.style.setProperty('--weather-cover', localStorage.getItem('weatherfx:cover') ?? '0'); } catch {}
+  try { root.style.setProperty('--weather-cover', localStorage.getItem(COVER_KEY) ?? '0'); } catch {}
   try {
-    const saved = JSON.parse(localStorage.getItem('weatherfx:scene') ?? 'null') as Partial<Scene> | null;
+    const saved = JSON.parse(localStorage.getItem(SCENE_KEY) ?? 'null') as Partial<Scene> | null;
     if (saved && !pinned && settings().weatherFx) {
       lastScene = { ...NONE, ...saved };
       Object.assign(cur, lastScene);
     }
   } catch {}
   resize();
-  initSky(document.getElementById('clouds') as HTMLCanvasElement);
-  addEventListener('resize', () => { resize(); resizeSky(); start(); });
+  initAtmosphere(document.getElementById('atmosphere') as HTMLCanvasElement);
+  addEventListener('resize', () => { resize(); resizeAtmosphere(); start(); });
+  // With no weather to animate the loop stops; the sun still moves, so redraw once a minute.
   setInterval(() => { if (!raf) frame(clock, 0); }, 60_000);
-  // daylight.ts fires this when the sky's colours change; the reduced-motion still frame follows it.
-  document.addEventListener('ds:theme', () => { if (reduced.matches) start(); });
-
-  reduced.addEventListener('change', start);
+  // daylight.ts fires this when the sky's colors change; the reduced-motion still frame follows it.
+  document.addEventListener('ds:theme', () => { if (reducedMotion.matches) start(); });
+  reducedMotion.addEventListener('change', start);
   let daylight = settings().daylight;
   onSettings((s) => {
     if (s.daylight !== daylight) {

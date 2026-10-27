@@ -1,3 +1,4 @@
+// User settings, synced through chrome.storage.sync, with change subscriptions.
 import { load, save, watch } from './store.js';
 
 /** tz is the place's IANA zone; auto marks a detected location rather than a typed city. */
@@ -23,7 +24,7 @@ export interface Settings {
   sky: Record<'moon' | 'chart' | 'meteors', boolean>;
 }
 
-export const DEFAULTS: Settings = {
+const DEFAULTS: Settings = {
   name: '',
   hour24: false,
   fahrenheit: false,
@@ -40,13 +41,15 @@ const KEY = 'settings';
 let current: Settings = DEFAULTS;
 const subscribers: ((s: Settings) => void)[] = [];
 
+/** The defaults overlaid with whichever of their keys were saved; keys no longer in the defaults drop out. */
+function known<T extends object>(defaults: T, saved: Partial<T> | undefined): T {
+  const out = { ...defaults };
+  for (const k of Object.keys(defaults) as (keyof T)[]) if (saved?.[k] !== undefined) out[k] = saved[k] as T[keyof T];
+  return out;
+}
+
 function merge(saved: Partial<Settings> | undefined): Settings {
-  return {
-    ...DEFAULTS,
-    ...saved,
-    show: { ...DEFAULTS.show, ...saved?.show },
-    sky: { ...DEFAULTS.sky, ...saved?.sky },
-  };
+  return { ...known(DEFAULTS, saved), show: known(DEFAULTS.show, saved?.show), sky: known(DEFAULTS.sky, saved?.sky) };
 }
 
 export async function initSettings(): Promise<Settings> {

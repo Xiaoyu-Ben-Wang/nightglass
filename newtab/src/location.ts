@@ -1,5 +1,4 @@
-// Finds where the user is for weather and the clock's time zone, at most every 6 hours.
-// A city typed into Settings turns this off until "Use my location" is pressed.
+// The weather place: detected at most every 6 hours, or a typed city, which stops detection until "Use my location".
 import { settings, updateSettings, type Place } from './settings.js';
 import { load, save } from './store.js';
 
@@ -50,4 +49,22 @@ export async function initLocation(): Promise<void> {
   } catch {
     // Permission denied or no fix: the weather stays off until a city is set.
   }
+}
+
+/** Looks up a typed city with Open-Meteo's geocoder. */
+export async function geocode(query: string): Promise<Place | null> {
+  const url = new URL('https://geocoding-api.open-meteo.com/v1/search');
+  // Open-Meteo matches a place name only, so "Springfield, Illinois, US" searches "Springfield"
+  // and the rest picks among the matches.
+  const [name, ...rest] = query.split(',').map((s) => s.trim()).filter(Boolean);
+  if (!name) return null;
+  url.search = new URLSearchParams({ name, count: '10', format: 'json' }).toString();
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Geocoding failed (${res.status})`);
+  type Hit = { name: string; admin1?: string; country?: string; country_code?: string; latitude: number; longitude: number; timezone?: string };
+  const hits: Hit[] = (await res.json()).results ?? [];
+  const hint = rest.join(' ').toLowerCase();
+  const hit = hits.find((c) => [c.admin1, c.country, c.country_code].some((x) => x && hint.includes(x.toLowerCase()))) ?? hits[0];
+  if (!hit) return null;
+  return { name: [hit.name, hit.admin1, hit.country_code].filter(Boolean).join(', '), lat: hit.latitude, lon: hit.longitude, tz: hit.timezone };
 }

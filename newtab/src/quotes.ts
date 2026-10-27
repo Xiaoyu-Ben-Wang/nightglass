@@ -1,8 +1,9 @@
-// One quote per day: from a Quotable-compatible API when it answers, else from the bundled list.
-// Whichever source answers, the quote is cached for the rest of the day.
+// One quote per day, from a Quotable-compatible API when it answers or else the bundled list; cached for the day.
 import { $ } from './dom.js';
-import { onSettings, settings } from './settings.js';
+import { DAY_MS } from './math.js';
 import { swap } from './motion.js';
+import { webSearch } from './search.js';
+import { onSettings, settings } from './settings.js';
 import { load, save } from './store.js';
 import { today } from './time.js';
 
@@ -16,7 +17,7 @@ let list: [string, string][] | null = null;
 // After one failure, skip the API for the rest of this tab's life.
 let apiFailed = false;
 
-const dayIndex = (day: string) => Math.floor(Date.parse(day) / 86_400_000);
+const dayIndex = (day: string) => Math.floor(Date.parse(day) / DAY_MS);
 
 async function fromApi(url: string): Promise<Pick<Quote, 'text' | 'author'>> {
   const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
@@ -66,10 +67,9 @@ export async function initQuote(): Promise<void> {
   if (cached && cached.day === day) show(cached);
   else await next();
 
-  // Click to look the quote up.
   $('quote').addEventListener('click', () => {
     const q = `"${text.textContent ?? ''}" ${by.textContent ?? ''}`.trim();
-    if (q.length > 3) window.open(`https://www.google.com/search?q=${encodeURIComponent(q)}`, '_blank', 'noopener');
+    if (q.length > 3) window.open(webSearch(q), '_blank', 'noopener');
   });
 
   let api = settings().quoteApi;

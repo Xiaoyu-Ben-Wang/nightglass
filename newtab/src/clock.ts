@@ -1,3 +1,4 @@
+// The clock, date and greeting, and the first-run name prompt.
 import { $, h } from './dom.js';
 import { onSettings, settings, updateSettings } from './settings.js';
 import { roll } from './motion.js';
@@ -79,7 +80,7 @@ export function initClock(): void {
   onSettings((s) => {
     nameForm.hidden = !!s.name;
     greeting.hidden = !s.name;
-    document.body.classList.toggle('onboarding', !s.name);
+    document.body.classList.toggle('is-onboarding', !s.name);
     if (!s.name) nameInput.focus();
     clock.dataset.time = '';
     tick();

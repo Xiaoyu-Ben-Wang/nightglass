@@ -1,3 +1,4 @@
+// The to-do list, kept on this device.
 import { $, h } from './dom.js';
 import { leave } from './motion.js';
 import { load, save, uid, watch } from './store.js';
@@ -30,7 +31,7 @@ function render(): void {
       set(todos.map((x) => (x.id === t.id ? { ...x, done: box.checked } : x)));
     });
     const del = h('button', { class: 'item__del', title: 'Delete', ariaLabel: `Delete ${t.text}` }, '×');
-    const li = h('li', { class: ['item', t.done && 'is-done', t.id === added && 'is-entering', t.id === checked && 'just-done'].filter(Boolean).join(' ') },
+    const li = h('li', { class: ['item', t.done && 'is-done', t.id === added && 'is-entering', t.id === checked && 'is-just-done'].filter(Boolean).join(' ') },
       h('label', { class: 'item__main ds-check' }, box, h('span', { class: 'item__text' }, t.text)),
       del);
     del.addEventListener('click', () => leave(li, () => set(todos.filter((x) => x.id !== t.id))));
