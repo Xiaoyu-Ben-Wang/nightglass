@@ -13,6 +13,15 @@
 </head>
 <body>
 <canvas id="sky" class="sky" aria-hidden="true"></canvas>
+<div class="horizon" aria-hidden="true"></div>
+<figure class="moon" id="moon">
+  <svg viewBox="-34 -34 68 68" aria-hidden="true">
+    <path class="moon__ticks" id="moon-ticks"></path>
+    <circle class="moon__ring" r="20"></circle>
+    <path class="moon__lit" id="moon-disc"></path>
+  </svg>
+  <figcaption class="moon__label" id="moon-label"></figcaption>
+</figure>
 
 <div class="corner corner--tl">
   <button class="chip" id="links-toggle" aria-expanded="false" aria-controls="links-panel" data-widget="links">Links</button>
@@ -89,13 +98,16 @@
   <form class="settings" id="settings-form">
     <label class="ds-field"><span class="ds-label">Name</span><input class="ds-input" name="name" maxlength="40" autocomplete="off"></label>
     <div class="ds-field">
-      <span class="ds-label">Weather location</span>
-      <div class="row">
-        <input class="ds-input" name="place" placeholder="City" autocomplete="off">
-        <button class="ds-btn ds-btn--sm" type="button" id="place-set">Set</button>
+      <label class="ds-label" for="place-input">Weather location</label>
+      <div class="locate">
+        <input class="ds-input locate__input" id="place-input" name="place" placeholder="City" autocomplete="off" spellcheck="false">
+        <button class="locate__btn" type="button" id="place-locate" title="Use my location" aria-label="Use my location">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="4.5"/><path d="M8 0.5v3M8 12.5v3M0.5 8h3M12.5 8h3"/><circle class="dot" cx="8" cy="8" r="1.2"/></svg>
+        </button>
       </div>
       <span class="ds-hint" id="place-status"></span>
     </div>
+    <label class="ds-field"><span class="ds-label">Quote API</span><input class="ds-input" name="quoteApi" type="url" placeholder="Bundled quotes only" autocomplete="off" spellcheck="false"></label>
     <div class="row">
       <label class="ds-switch"><input type="checkbox" name="hour24">24-hour clock</label>
       <label class="ds-switch"><input type="checkbox" name="fahrenheit">°F</label>
@@ -111,6 +123,16 @@
     </fieldset>
     <fieldset class="group">
       <legend class="ds-label">Sky</legend>
+      <label class="spin"><span class="ds-label">Spin</span>
+        <select class="ds-select" name="spin">
+          <option value="off">Off</option>
+          <option value="slow">Slow</option>
+          <option value="medium">Medium</option>
+          <option value="fast">Fast</option>
+        </select>
+      </label>
+      <label class="ds-switch spin"><input type="checkbox" name="daylight">Follow the sun</label>
+      <label class="ds-switch"><input type="checkbox" name="sky.moon">Moon</label>
       <label class="ds-switch"><input type="checkbox" name="sky.aurora">Aurora</label>
       <label class="ds-switch"><input type="checkbox" name="sky.chart">Star chart</label>
       <label class="ds-switch"><input type="checkbox" name="sky.meteors">Meteors</label>

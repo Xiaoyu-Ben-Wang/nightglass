@@ -7,18 +7,18 @@
 <link rel="stylesheet" href="../newtab/vendor/css/nightglass.css">
 <link rel="stylesheet" href="../newtab/onedark.css">
 <style>
-  html, body { margin: 0; overflow: hidden; background: #181a1f; }
+  html, body { margin: 0; overflow: hidden; background: #1e2127; }
   .view { position: relative; overflow: hidden; }
   .scene { position: absolute; top: 0; left: 0; }
   .scene canvas { display: block; width: 100%; height: 100%; }
-  .shade { position: absolute; inset: 0; background: rgba(24, 26, 31, var(--shade)); }
+  .shade { position: absolute; inset: 0; background: rgba(30, 33, 39, var(--shade)); }
   #deco { position: absolute; inset: 0; width: 100%; height: 100%; }
 </style>
 </head>
 <body>
 <div class="view" id="view"><div class="scene" id="scene"><canvas id="c"></canvas></div><div class="shade"></div><canvas id="deco"></canvas></div>
 <script type="module">
-  // Stars and a small polar chart for the tab strip. The image is left-aligned and tiled, so the
+  // Stars and a small compass for the tab strip. The image is left-aligned and tiled, so the
   // compass sits at a fixed x that most windows show (px), level with the tabs (py).
   // ?w=3840&h=160&sh=220&px=1180&py=40&top=16&shade=0.35
   // Chrome draws the frame image about 16px above the tab strip's top, so `top` is where decoration starts.
@@ -31,12 +31,12 @@
   document.getElementById('scene').style.cssText = `width:${w}px;height:${sh}px`;
   const px = num('px', 1180);
   sky(document.getElementById('c'), {
-    aurora: false, clouds: false, meteors: false, mountains: false, koi: false, transparent: true,
+    chart: false, aurora: false, clouds: false, meteors: false, mountains: false, koi: false, transparent: true,
     pole: [px / w, num('py', 40) / sh],
   });
 
-  // An hour tape along the top edge (24h per tile, like the chart's right-ascension scale), registration
-  // crosses between the hours, and a blue index mark above the compass. Every spacing divides w, so tiles meet cleanly.
+  // An hour tape along the top edge (24h per tile, like a right-ascension scale), registration crosses
+  // between the hours, and a text-free compass. Every spacing divides w, so tiles meet cleanly.
   const deco = document.getElementById('deco');
   const dpr = devicePixelRatio;
   deco.width = w * dpr;
@@ -46,6 +46,8 @@
   const ink = (a) => `rgba(171, 178, 191, ${a})`;
   const hour = w / 24;
   const top = num('top', 16);
+  const py = num('py', 40);
+  const R = 30;
   try { await document.fonts.load('500 8px "IBM Plex Mono"'); } catch {}
 
   ctx.fillStyle = ink(0.08);
@@ -59,7 +61,10 @@
   ctx.font = '500 8px "IBM Plex Mono", ui-monospace, monospace';
   ctx.textBaseline = 'top';
   ctx.fillStyle = ink(0.24);
-  for (let k = 0; k < 24; k++) ctx.fillText(`${String(k).padStart(2, '0')}h`, Math.round(k * hour) + 4, top + 3);
+  for (let k = 0; k < 24; k++) {
+    const x = Math.round(k * hour) + 4;
+    if (x + 18 < px - R - 8 || x > px + R + 8) ctx.fillText(`${String(k).padStart(2, '0')}h`, x, top + 3);
+  }
 
   const cross = (x, y, r, a) => {
     ctx.fillStyle = ink(a);
@@ -71,12 +76,39 @@
     if (Math.abs(x - px) > 120) cross(x, top + 30, 3, 0.22);
   }
 
-  ctx.fillStyle = 'rgba(97, 175, 239, 0.85)';
-  ctx.fillRect(px, top, 1, 9);
+  // compass: ticked outer ring, two inner rings, crosshair, and a four-point star for Polaris
+  const ring = (r, a, dash = []) => {
+    ctx.strokeStyle = ink(a);
+    ctx.setLineDash(dash);
+    ctx.beginPath();
+    ctx.arc(px + 0.5, py + 0.5, r, 0, Math.PI * 2);
+    ctx.stroke();
+  };
+  ctx.lineWidth = 1;
+  ring(R, 0.2);
+  ring(R * 0.62, 0.12, [2, 3]);
+  ring(R * 0.24, 0.16);
+  ctx.setLineDash([]);
+  for (let i = 0; i < 72; i++) {
+    const a = (i / 72) * Math.PI * 2;
+    const len = i % 18 === 0 ? 7 : i % 6 === 0 ? 4 : 2;
+    ctx.strokeStyle = ink(i % 18 === 0 ? 0.34 : 0.18);
+    ctx.beginPath();
+    ctx.moveTo(px + 0.5 + Math.cos(a) * (R + 2), py + 0.5 + Math.sin(a) * (R + 2));
+    ctx.lineTo(px + 0.5 + Math.cos(a) * (R + 2 + len), py + 0.5 + Math.sin(a) * (R + 2 + len));
+    ctx.stroke();
+  }
+  ctx.fillStyle = ink(0.16);
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    for (let d = R * 0.32; d < R * 0.92; d += 4) ctx.fillRect(px + dx * d, py + dy * d, 1, 1);
+  }
+  ctx.fillStyle = ink(0.75);
   ctx.beginPath();
-  ctx.moveTo(px - 3.5, top + 11);
-  ctx.lineTo(px + 4.5, top + 11);
-  ctx.lineTo(px + 0.5, top + 15);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
+    const r = i % 2 === 0 ? 4.5 : 1.2;
+    ctx.lineTo(px + 0.5 + Math.cos(a) * r, py + 0.5 + Math.sin(a) * r);
+  }
   ctx.closePath();
   ctx.fill();
 </script>

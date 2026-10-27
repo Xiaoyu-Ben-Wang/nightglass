@@ -1,5 +1,6 @@
 import { $ } from './dom.js';
-import { onSettings, settings, updateSettings, type Settings } from './settings.js';
+import { onSettings, settings, updateSettings, type Settings, type Spin } from './settings.js';
+import { useMyLocation } from './location.js';
 import { geocode } from './weather.js';
 
 const PANELS = [['links-toggle', 'links-panel'], ['todo-toggle', 'todo-panel'], ['settings-toggle', 'settings-panel']] as const;
@@ -41,8 +42,11 @@ function bindSettings(): void {
   const fill = (s: Settings) => {
     if (document.activeElement !== field('name')) field('name').value = s.name;
     if (document.activeElement !== field('place')) field('place').value = s.place?.name ?? '';
+    if (document.activeElement !== field('quoteApi')) field('quoteApi').value = s.quoteApi;
     field('hour24').checked = s.hour24;
     field('fahrenheit').checked = s.fahrenheit;
+    field('spin').value = s.spin;
+    field('daylight').checked = s.daylight;
     for (const k of Object.keys(s.show) as (keyof Settings['show'])[]) field(`show.${k}`).checked = s.show[k];
     for (const k of Object.keys(s.sky) as (keyof Settings['sky'])[]) field(`sky.${k}`).checked = s.sky[k];
   };
@@ -52,11 +56,15 @@ function bindSettings(): void {
   form.addEventListener('change', (e) => {
     const input = e.target as HTMLInputElement;
     const s = settings();
-    if (input.name === 'name') {
+    if (input.name === 'quoteApi') {
+      void updateSettings({ quoteApi: input.value.trim() });
+    } else if (input.name === 'name') {
       const name = input.value.trim();
       if (name) void updateSettings({ name });
-    } else if (input.name === 'hour24' || input.name === 'fahrenheit') {
+    } else if (input.name === 'hour24' || input.name === 'fahrenheit' || input.name === 'daylight') {
       void updateSettings({ [input.name]: input.checked });
+    } else if (input.name === 'spin') {
+      void updateSettings({ spin: input.value as Spin });
     } else if (input.name.startsWith('show.')) {
       void updateSettings({ show: { ...s.show, [input.name.slice(5)]: input.checked } });
     } else if (input.name.startsWith('sky.')) {
@@ -66,9 +74,9 @@ function bindSettings(): void {
 
   const setPlace = async () => {
     const query = field('place').value.trim();
+    if (query && query === settings().place?.name) return;
     if (!query) {
-      await updateSettings({ place: null });
-      status.textContent = 'Weather off';
+      $('place-locate').click();
       return;
     }
     status.textContent = 'Looking up…';
@@ -85,7 +93,21 @@ function bindSettings(): void {
       status.textContent = 'Lookup failed. Check your connection.';
     }
   };
-  $('place-set').addEventListener('click', () => void setPlace());
+  const locate = $('place-locate');
+  locate.addEventListener('click', async () => {
+    status.textContent = 'Locating…';
+    locate.classList.add('is-busy');
+    try {
+      const place = await useMyLocation();
+      field('place').value = place.name;
+      status.textContent = '';
+    } catch {
+      status.textContent = 'Location is off. Allow it for your browser in system settings, or type a city.';
+    } finally {
+      locate.classList.remove('is-busy');
+    }
+  });
+  field('place').addEventListener('change', () => void setPlace());
   field('place').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); void setPlace(); }
   });
@@ -118,7 +140,7 @@ function bindSearch(): void {
     else location.href = `https://search.brave.com/search?q=${encodeURIComponent(text)}`;
   });
   document.addEventListener('keydown', (e) => {
-    const typing = (e.target as Element).closest('input, textarea, [contenteditable="true"]');
+    const typing = e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable="true"]');
     if (e.key === '/' && !typing && settings().show.search) {
       e.preventDefault();
       input.focus();

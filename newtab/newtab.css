@@ -14,6 +14,35 @@ body::after {
   pointer-events: none;
 }
 .sky { position: fixed; inset: 0; z-index: -2; width: 100%; height: 100%; display: block; }
+/* Sunrise and sunset light, rising from the horizon; colors and strength come from daylight.ts. */
+.horizon {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background: linear-gradient(to top, var(--horizon-low, transparent) 0%, var(--horizon-mid, transparent) 42%, transparent 92%);
+  opacity: var(--horizon-a, 0);
+  transition: opacity 2s ease;
+  pointer-events: none;
+}
+
+.moon {
+  position: fixed;
+  top: 17vh;
+  left: 14vw;
+  z-index: -1;
+  display: grid;
+  justify-items: center;
+  gap: var(--s-2);
+  margin: 0;
+  opacity: var(--nightness, 1);
+  transition: opacity 2s ease;
+  pointer-events: none;
+}
+.moon svg { width: clamp(72px, 7vw, 104px); overflow: visible; }
+.moon__ticks { stroke: var(--ink-3); stroke-width: 0.6; }
+.moon__ring { fill: rgba(171, 178, 191, 0.06); stroke: rgba(171, 178, 191, 0.22); stroke-width: 0.5; }
+.moon__lit { fill: #d7dae0; filter: drop-shadow(0 0 6px rgba(215, 218, 224, 0.35)); }
+.moon__label { font: 10px / 1 var(--font-mono); letter-spacing: var(--label-tracking); text-transform: uppercase; color: var(--ink-3); }
 [hidden] { display: none !important; }
 .off, .onboarding .focus { visibility: hidden; }
 
@@ -243,10 +272,36 @@ body::after {
 .add .ds-input { min-height: 34px; padding: 4px 10px; }
 
 .settings { display: grid; gap: var(--s-5); }
+
+.locate { position: relative; }
+.locate__input.ds-input { min-height: 38px; padding: 6px 42px 6px 12px; }
+.locate__btn {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: color 150ms ease;
+}
+.locate__btn:hover, .locate__btn.is-busy { color: var(--accent); }
+.locate__btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.2; }
+.locate__btn .dot { fill: currentColor; stroke: none; }
+.locate__btn.is-busy svg { animation: locate-spin 1.4s linear infinite; }
+@keyframes locate-spin { to { transform: rotate(1turn); } }
+@media (prefers-reduced-motion: reduce) { .locate__btn.is-busy svg { animation: none; } }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-5); }
 .row .ds-input { flex: 1; min-height: 34px; padding: 4px 10px; }
 .group { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3) var(--s-4); margin: 0; padding: 0; border: 0; }
 .group legend { grid-column: 1 / -1; margin-bottom: var(--s-3); padding: 0; }
+.spin { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--s-3); }
+.spin .ds-select { width: auto; min-height: 34px; padding-block: 4px; }
 
 @media (max-width: 720px) {
   .search__input, .search__input:focus { width: 9rem; }

@@ -1,13 +1,12 @@
 import { $, h } from './dom.js';
 import { onSettings, settings, updateSettings } from './settings.js';
+import { longDate, parts } from './time.js';
 
 const clock = $('clock');
 const date = $('date');
 const greeting = $('greeting');
 const nameForm = $<HTMLFormElement>('name-form');
 const nameInput = $<HTMLInputElement>('name-input');
-
-const dateFmt = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 
 function partOfDay(hour: number): string {
   if (hour >= 5 && hour < 12) return 'morning';
@@ -18,16 +17,17 @@ function partOfDay(hour: number): string {
 function tick(): void {
   const now = new Date();
   const { hour24, name } = settings();
-  const hours = hour24 ? now.getHours() : now.getHours() % 12 || 12;
-  const time = `${hour24 ? String(hours).padStart(2, '0') : hours}:${String(now.getMinutes()).padStart(2, '0')}`;
-  const ampm = hour24 ? '' : now.getHours() < 12 ? 'AM' : 'PM';
+  const { hour, minute } = parts(now);
+  const hours = hour24 ? hour : hour % 12 || 12;
+  const time = `${hour24 ? String(hours).padStart(2, '0') : hours}:${String(minute).padStart(2, '0')}`;
+  const ampm = hour24 ? '' : hour < 12 ? 'AM' : 'PM';
   if (clock.dataset.time !== time + ampm) {
     clock.dataset.time = time + ampm;
     clock.replaceChildren(time, ...(ampm ? [h('span', { class: 'clock__ampm' }, ampm)] : []));
-    date.textContent = dateFmt.format(now);
+    date.textContent = longDate(now);
     document.title = `${time}${ampm ? ` ${ampm}` : ''}`;
   }
-  const text = `Good ${partOfDay(now.getHours())}`;
+  const text = `Good ${partOfDay(hour)}`;
   if (greeting.dataset.text !== text + name && !greeting.querySelector('[contenteditable="true"]')) {
     greeting.dataset.text = text + name;
     const who = h('span', { class: 'greeting__name', title: 'Double-click to rename' }, name);

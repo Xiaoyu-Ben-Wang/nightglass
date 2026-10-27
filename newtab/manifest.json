@@ -6,5 +6,10 @@
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
-  "permissions": ["storage", "search", "favicon"]
+  "permissions": [
+    "storage",
+    "search",
+    "favicon",
+    "geolocation"
+  ]
 }

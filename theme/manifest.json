@@ -1,21 +1,28 @@
 {
   "manifest_version": 3,
   "name": "Nightglass One Dark",
-  "version": "1.3.1",
+  "version": "1.7.1",
   "description": "One Dark slate with faint stars and a polar compass in the tab strip.",
   "theme": {
     "images": {
       "theme_frame": { "100": "images/theme_frame.png", "200": "images/theme_frame@2x.png" },
-      "theme_frame_inactive": { "100": "images/theme_frame.png", "200": "images/theme_frame@2x.png" }
+      "theme_frame_inactive": { "100": "images/theme_frame.png", "200": "images/theme_frame@2x.png" },
+      "theme_tab_background": "images/tab_background.png",
+      "theme_tab_background_inactive": "images/tab_background_inactive.png",
+      "theme_tab_background_incognito": "images/tab_background_incognito.png"
     },
     "colors": {
-      "frame": [24, 26, 31],
-      "frame_inactive": [30, 33, 39],
-      "frame_incognito": [30, 24, 38],
-      "frame_incognito_inactive": [34, 29, 42],
+      "frame": [30, 33, 39],
+      "frame_inactive": [27, 29, 35],
+      "frame_incognito": [36, 29, 45],
+      "frame_incognito_inactive": [32, 26, 40],
       "toolbar": [44, 49, 58],
+      "background_tab": [22, 24, 29],
+      "background_tab_inactive": [20, 22, 27],
+      "background_tab_incognito": [26, 21, 32],
+      "background_tab_incognito_inactive": [24, 19, 30],
       "tab_text": [215, 218, 224],
-      "tab_background_text": [157, 165, 180],
+      "tab_background_text": [171, 178, 191],
       "tab_background_text_inactive": [92, 99, 112],
       "tab_background_text_incognito": [198, 120, 221],
       "tab_background_text_incognito_inactive": [150, 110, 168],

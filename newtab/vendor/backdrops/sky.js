@@ -537,7 +537,9 @@ export default function mount(canvas, opts = {}) {
     for (const r of st.ripples) {
       r.r += r.speed * dt;
       if (r.fade !== undefined) r.fade -= dt / 0.25;
-      const a = r.strength * Math.pow(1 - r.r / r.max, 1.6) * Math.min(1, r.r / 24) * Math.max(0, r.fade ?? 1);
+      // Clamped: r.r can pass r.max on the last frame, and a negative base makes pow() NaN, which
+      // the canvas rejects as a colour, so the ring would flash in whatever stroke colour came before.
+      const a = r.strength * Math.pow(Math.max(0, 1 - r.r / r.max), 1.6) * Math.min(1, r.r / 24) * Math.max(0, r.fade ?? 1);
       if (a < 0.004) continue;
       if (!paint) continue;
       live.push({ r, a });
@@ -783,7 +785,7 @@ export default function mount(canvas, opts = {}) {
   function drawStars(s, t) {
     const { ctx, w, h } = s;
     const [cx, cy] = pole(s);
-    const turn = t * turnRate(s);
+    const turn = st.turn;
     ctx.fillStyle = `rgb(${st.ink})`;
     for (const star of st.stars) {
       const x = cx + Math.cos(star.angle + turn) * star.dist;
@@ -808,7 +810,7 @@ export default function mount(canvas, opts = {}) {
     const { ctx, w, h } = s;
     const [cx, cy] = pole(s);
     const r = Math.min(w, h) * 0.3;
-    const turn = t * turnRate(s);
+    const turn = st.turn;
     const perDeg = r / 40;
     const cosT = Math.cos(turn);
     const sinT = Math.sin(turn);
@@ -985,6 +987,8 @@ export default function mount(canvas, opts = {}) {
 
   function draw(s, t, dt) {
     const { ctx, w, h, opts: o } = s;
+    // Accumulated, so changing skyTurnSeconds keeps the current angle instead of jumping.
+    st.turn = (st.turn || 0) + dt * turnRate(s);
     const moving = dt > 0;
     const now = t * 1000;
     if (o.transparent) ctx.clearRect(0, 0, w, h);

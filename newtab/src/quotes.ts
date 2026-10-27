@@ -1,42 +1,76 @@
+// One quote per day: from a Quotable-compatible API when it answers, else from the bundled list.
+// Whichever source answers, the quote is cached for the rest of the day.
 import { $ } from './dom.js';
-import { today } from './store.js';
+import { onSettings, settings } from './settings.js';
+import { load, save } from './store.js';
+import { today } from './time.js';
 
-// Public-domain lines, several of them about the night sky.
-const QUOTES: [string, string][] = [
-  ['I have loved the stars too fondly to be fearful of the night.', 'Sarah Williams'],
-  ['Keep your eyes on the stars, and your feet on the ground.', 'Theodore Roosevelt'],
-  ['We are all in the gutter, but some of us are looking at the stars.', 'Oscar Wilde'],
-  ['Hitch your wagon to a star.', 'Ralph Waldo Emerson'],
-  ['Adopt the pace of nature: her secret is patience.', 'Ralph Waldo Emerson'],
-  ['Dwell on the beauty of life. Watch the stars, and see yourself running with them.', 'Marcus Aurelius'],
-  ['Very little is needed to make a happy life.', 'Marcus Aurelius'],
-  ['Waste no more time arguing what a good man should be. Be one.', 'Marcus Aurelius'],
-  ['The impediment to action advances action. What stands in the way becomes the way.', 'Marcus Aurelius'],
-  ['We suffer more often in imagination than in reality.', 'Seneca'],
-  ['Begin at once to live, and count each separate day as a separate life.', 'Seneca'],
-  ['It is not that we have a short time to live, but that we waste a lot of it.', 'Seneca'],
-  ['First say to yourself what you would be; and then do what you have to do.', 'Epictetus'],
-  ['No man is free who is not master of himself.', 'Epictetus'],
-  ['The journey of a thousand miles begins with a single step.', 'Lao Tzu'],
-  ['Our life is frittered away by detail. Simplify, simplify.', 'Henry David Thoreau'],
-  ['The best way out is always through.', 'Robert Frost'],
-  ['Well done is better than well said.', 'Benjamin Franklin'],
-  ['Lost time is never found again.', 'Benjamin Franklin'],
-  ['Energy and persistence conquer all things.', 'Benjamin Franklin'],
-];
+interface Quote { text: string; author: string; source: 'api' | 'list'; day: string }
 
+const KEY = 'quote';
 const text = $('quote-text');
 const by = $('quote-by');
 
-function show(i: number): void {
-  const [line, author] = QUOTES[i % QUOTES.length]!;
-  text.textContent = line;
-  by.textContent = author;
+let list: [string, string][] | null = null;
+// After one failure, skip the API for the rest of this tab's life.
+let apiFailed = false;
+
+const dayIndex = (day: string) => Math.floor(Date.parse(day) / 86_400_000);
+
+async function fromApi(url: string): Promise<Pick<Quote, 'text' | 'author'>> {
+  const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
+  if (!res.ok) throw new Error(`Quote API returned ${res.status}`);
+  const data: unknown = await res.json();
+  // /quotes/random returns an array, the older /random a single object.
+  const q = (Array.isArray(data) ? data[0] : data) as { content?: unknown; author?: unknown } | undefined;
+  if (typeof q?.content !== 'string' || typeof q.author !== 'string') throw new Error('Unexpected quote format');
+  return { text: q.content, author: q.author };
 }
 
-export function initQuote(): void {
-  // One quote per day; click for another.
-  let i = Math.floor(Date.parse(today()) / 86_400_000);
-  show(i);
-  $('quote').addEventListener('click', () => show(++i));
+async function fromList(index: number): Promise<Pick<Quote, 'text' | 'author'>> {
+  list ??= (await (await fetch(new URL('../data/quotes.json', import.meta.url))).json()) as [string, string][];
+  const [quote, author] = list[((index % list.length) + list.length) % list.length]!;
+  return { text: quote, author };
+}
+
+async function pick(day: string, index: number): Promise<Quote> {
+  const url = settings().quoteApi.trim();
+  if (url && !apiFailed) {
+    try {
+      return { ...(await fromApi(url)), source: 'api', day };
+    } catch {
+      apiFailed = true;
+    }
+  }
+  return { ...(await fromList(index)), source: 'list', day };
+}
+
+function show(q: Quote): void {
+  text.textContent = q.text;
+  by.textContent = q.author;
+}
+
+export async function initQuote(): Promise<void> {
+  const day = today();
+  let offset = 0;
+  const next = async () => {
+    const q = await pick(day, dayIndex(day) + offset++);
+    show(q);
+    await save('local', KEY, q);
+  };
+
+  const cached = await load<Quote | null>('local', KEY, null);
+  if (cached && cached.day === day) show(cached);
+  else await next();
+
+  // Click for another; it becomes today's quote.
+  $('quote').addEventListener('click', () => void next());
+
+  let api = settings().quoteApi;
+  onSettings((s) => {
+    if (s.quoteApi === api) return;
+    api = s.quoteApi;
+    apiFailed = false;
+    void next();
+  });
 }

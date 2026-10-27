@@ -1,5 +1,6 @@
 import { $ } from './dom.js';
-import { load, save, today, watch } from './store.js';
+import { load, save, watch } from './store.js';
+import { today } from './time.js';
 
 interface Focus { text: string; done: boolean; day: string }
 
