@@ -1,5 +1,6 @@
 // The sun, clouds and god rays in WebGL2: three cloud inks in a stable-fluids simulation, lit by sunlight marched through them.
 import { clamp, mixRGB } from './math.js';
+import { MASK_SCALE, textMask } from './text-mask.js';
 
 export interface AtmosphereInput {
   cover: number;
@@ -177,11 +178,12 @@ void main() {
   }
   o = vec4(exp(-tau * uCloudOn / unit * vec3(0.06, 0.22, 0.25)), 1.0);
 }`,
-  // Shadow cast by every cloud between a pixel and the sun: beams of light are the lit gaps between shadows.
+  // Shadow cast by every cloud, and the clock's digits, between a pixel and the sun: beams of light are the lit
+  // gaps between shadows.
   rays: `${HEAD}
-uniform sampler2D uSource;
+uniform sampler2D uSource, uMask;
 uniform vec2 uSun, uRes;
-uniform float uCloudOn;
+uniform float uCloudOn, uMaskScale;
 float ign(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }
 void main() {
   vec2 toSun = (uSun - vUv) * uRes;
@@ -191,17 +193,25 @@ void main() {
   vec2 stepUv = toSun / max(r, 0.001) * ds / uRes;
   // Jittered start, so the coarse march blurs instead of banding.
   vec2 uv = vUv + stepUv * ign(gl_FragCoord.xy);
-  float tau = 0.0;
+  // The digits are read at the mip level one step wide, so strokes thinner than a step still block their share.
+  float lod = log2(max(ds * uMaskScale, 1.0));
+  float span = max(uRes.x, uRes.y);
+  float tau = 0.0, solid = 0.0;
   for (int i = 0; i < N; i++) {
     float inside = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
     // Puffs and banks cast the shadows, sharpened into crisp-edged occluders as real cumulus are; thin high
     // cloud barely shades.
     vec3 d = texture(uSource, uv).rgb;
     tau += (0.05 * d.r + smoothstep(0.28, 0.62, d.g) + smoothstep(0.3, 0.65, d.b)) * inside;
+    // Digits shade only near the sun: when it is behind them, not when it is across the sky.
+    float near = exp(-length((uv - uSun) * uRes) / (0.07 * span));
+    solid += textureLod(uMask, uv, lod).a * near * inside;
     uv += stepUv;
   }
-  // Depth per step scaled to the screen, so shadows look the same in any window size.
-  o = vec4(exp(-tau * uCloudOn * ds / (min(uRes.x, uRes.y) * 0.039)), 0.0, 0.0, 1.0);
+  // Cloud depth per step is scaled to the screen, so shadows look the same in any window size. About 6px of
+  // stroke blocks the most the digits can, half the light, which keeps their beams gentle.
+  float cloudT = exp(-tau * uCloudOn * ds / (min(uRes.x, uRes.y) * 0.039));
+  o = vec4(cloudT * (1.0 - 0.5 * (1.0 - exp(-solid * ds / 6.0))), 0.0, 0.0, 1.0);
 }`,
   // Beams, worked out at low resolution from the shadow field: a beam is a lit path running beside shadowed
   // ones; with no shadow nearby there is nothing to see.
@@ -312,6 +322,8 @@ let gl: WebGL2RenderingContext | null = null;
 let canvas: HTMLCanvasElement;
 let programs: Record<Name, { prog: WebGLProgram; uni: Map<string, WebGLUniformLocation | null> }>;
 let velocity: Double, dye: Double, pressure: Double, divergence: Target, curl: Target, rays: Target, beams: Target, light: Target;
+let mask: { tex: WebGLTexture };
+let shadowCaster: HTMLElement | undefined;
 let fresh = true;
 let shift = 0;
 let nextGust = 0;
@@ -387,7 +399,7 @@ function allocate(): void {
 }
 
 /** Runs one pass of a program into out (null draws to the screen); Targets bind as textures. */
-function pass(name: Name, out: Target | null, uniforms: Record<string, number | number[] | Target>): void {
+function pass(name: Name, out: Target | null, uniforms: Record<string, number | number[] | { tex: WebGLTexture }>): void {
   const g = gl!;
   const p = programs[name];
   g.useProgram(p.prog);
@@ -410,6 +422,15 @@ function pass(name: Name, out: Target | null, uniforms: Record<string, number | 
   g.bindFramebuffer(g.FRAMEBUFFER, out ? out.fbo : null);
   g.viewport(0, 0, out ? out.w : canvas.width, out ? out.h : canvas.height);
   g.drawArrays(g.TRIANGLE_STRIP, 0, 4);
+}
+
+function uploadMask(source: HTMLCanvasElement): void {
+  const g = gl!;
+  g.bindTexture(g.TEXTURE_2D, mask.tex);
+  g.pixelStorei(g.UNPACK_FLIP_Y_WEBGL, true);
+  g.texImage2D(g.TEXTURE_2D, 0, g.RGBA, g.RGBA, g.UNSIGNED_BYTE, source);
+  g.pixelStorei(g.UNPACK_FLIP_Y_WEBGL, false);
+  g.generateMipmap(g.TEXTURE_2D);
 }
 
 function splat(x: number, y: number, dx: number, dy: number, radius: number): void {
@@ -494,7 +515,9 @@ export function renderAtmosphere(dt: number, p: AtmosphereInput): void {
   const cloudOn = cloudy ? 1 : 0;
   if (cloudy) pass('light', light, { uSource: dye.read, uSun: sun, uRes: res, uSunVis: sunVis, uCloudOn: cloudOn });
   if (sunVis > SUN_VISIBLE) {
-    pass('rays', rays, { uSource: dye.read, uSun: sun, uRes: res, uCloudOn: cloudOn });
+    const text = shadowCaster && textMask(shadowCaster);
+    if (text) uploadMask(text);
+    pass('rays', rays, { uSource: dye.read, uMask: mask, uMaskScale: MASK_SCALE, uSun: sun, uRes: res, uCloudOn: cloudOn });
     pass('beams', beams, { uRays: rays, uSun: sun, uRes: res });
   }
   const lit = mixRGB(mixRGB([0.36, 0.39, 0.45], [0.95, 0.96, 0.98], p.day), [0.62, 0.65, 0.7], p.dark * 0.6);
@@ -508,8 +531,10 @@ export function renderAtmosphere(dt: number, p: AtmosphereInput): void {
   });
 }
 
-export function initAtmosphere(el: HTMLCanvasElement): void {
+/** shadow is an element whose text blocks the sun like cloud. */
+export function initAtmosphere(el: HTMLCanvasElement, shadow?: HTMLElement): void {
   canvas = el;
+  shadowCaster = shadow;
   gl = canvas.getContext('webgl2', { alpha: true, premultipliedAlpha: true, antialias: false, depth: false });
   if (!gl || !gl.getExtension('EXT_color_buffer_float')) {
     gl = null;
@@ -527,6 +552,13 @@ export function initAtmosphere(el: HTMLCanvasElement): void {
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
   gl.enableVertexAttribArray(0);
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  mask = { tex: gl.createTexture()! };
+  gl.bindTexture(gl.TEXTURE_2D, mask.tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  // Empty until the text is first drawn.
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
   resizeAtmosphere();
   addEventListener('pointermove', (e) => {
     const x = e.clientX / innerWidth, y = 1 - e.clientY / innerHeight;

@@ -433,8 +433,15 @@ export function initScene(): void {
     }
   } catch {}
   resize();
-  initAtmosphere(document.getElementById('atmosphere') as HTMLCanvasElement);
+  const time = document.getElementById('clock')!;
+  initAtmosphere(document.getElementById('atmosphere') as HTMLCanvasElement, time);
   addEventListener('resize', () => { resize(); resizeAtmosphere(); start(); });
+  // The digits shade the sun's rays, so a paused sky redraws when they change, or move as the column resizes.
+  const redraw = () => { if (!raf) frame(clock, 0); };
+  new MutationObserver(redraw).observe(time, { childList: true, subtree: true, characterData: true });
+  const sizes = new ResizeObserver(redraw);
+  for (const el of time.parentElement!.children) sizes.observe(el);
+  void document.fonts.ready.then(redraw);
   // With no weather to animate the loop stops; the sun still moves, so redraw once a minute.
   setInterval(() => { if (!raf) frame(clock, 0); }, 60_000);
   // daylight.ts fires this when the sky's colors change; the reduced-motion still frame follows it.

@@ -4,7 +4,7 @@ A browser theme and new tab page for Chrome and Brave, in One Dark colors.
 
 The new tab has a clock, a daily focus, to-dos, links, weather and a quote. The background is a star chart with the sun, moon and current weather drawn on top.
 
-[Try the new tab in your browser](https://xiaoyu-ben-wang.github.io/nightglass/). The demo stores its settings in the page instead of syncing them.
+[Try the new tab in your browser](https://github.wxyben.dev/nightglass/). The demo stores its settings in the page instead of syncing them.
 
 ![New tab, partly cloudy](docs/screenshots/day.png)
 
@@ -70,6 +70,7 @@ Lighting is calculated by tracing light from the sun through the clouds:
 - Thin clouds near the sun have bright edges.
 - The sun is dimmed by clouds in front of it.
 - Gaps between clouds produce light rays.
+- The clock's digits block the sun when it's behind them, with light rays between them.
 - Clouds turn orange and pink at sunrise and sunset.
 
 Rendering takes about 1 ms per frame.
@@ -110,7 +111,7 @@ The page has four layers, back to front:
 | `main.ts` | Loads settings and starts each widget |
 | `daylight.ts` | Sun position and sky colors |
 | `scene.ts` | Maps weather codes to effects, draws precipitation, runs the animation loop |
-| `atmosphere.ts` | Cloud simulation, sun and lighting |
+| `atmosphere.ts`, `text-mask.ts` | Cloud simulation, sun and lighting; the clock's digits as a shadow mask |
 | `weather.ts` | Fetches weather, cached for 30 minutes |
 | `location.ts` | Location detection and city lookup |
 | `moon.ts` | Moon phase |
