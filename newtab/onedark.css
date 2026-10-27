@@ -1,0 +1,39 @@
+/* One Dark colors over Nightglass's type, shape and backdrop. Loaded after vendor/css/nightglass.css. */
+html[data-ds="nightglass"] {
+  --night: #21252b;
+  --bg: #282c34;
+  --bg-2: #21252b;
+  --surface: rgba(33, 37, 43, 0.78);
+  --surface-solid: rgba(33, 37, 43, 0.96);
+  --wash: rgba(171, 178, 191, 0.07);
+  --ink: #d7dae0;
+  --ink-2: #abb2bf;
+  --ink-3: #5c6370;
+  --line: rgba(171, 178, 191, 0.12);
+  --line-2: rgba(171, 178, 191, 0.24);
+  --accent: #61afef;
+  --accent-2: #8cc5f4;
+  --accent-ink: #61afef;
+  --on-accent: #21252b;
+  --glow: rgba(97, 175, 239, 0.3);
+  --ok: #98c379;
+  --warn: #e5c07b;
+  --danger: #e06c75;
+  --sel-bg: #3e4451;
+  --sel-ink: #d7dae0;
+
+  /* syntax colors, used sparingly */
+  --od-purple: #c678dd;
+  --od-orange: #d19a66;
+  --od-cyan: #56b6c2;
+  --od-yellow: #e5c07b;
+  --od-green: #98c379;
+
+  --sky-ink: #abb2bf;
+  --sky-rim: #61afef;
+  --sky-glow: #2c313a;
+  --sky-mid: #282c34;
+  --sky-deep: #21252b;
+  --overlay: var(--dotgrid), radial-gradient(130% 100% at 50% 40%, transparent 55%, rgba(24, 26, 31, 0.6) 100%);
+  background: radial-gradient(120% 80% at 70% 0%, #2c313a 0%, #282c34 45%, #21252b 100%) #21252b;
+}

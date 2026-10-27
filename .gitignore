@@ -1,0 +1,4 @@
+node_modules/
+newtab/dist/
+# written by the browser when it loads the unpacked theme
+theme/Cached Theme.pak

@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en" data-ds="nightglass">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New Tab</title>
+<link rel="stylesheet" href="vendor/css/base.css">
+<link rel="stylesheet" href="vendor/css/components.css">
+<link rel="stylesheet" href="vendor/css/nightglass.css">
+<link rel="stylesheet" href="onedark.css">
+<link rel="stylesheet" href="newtab.css">
+<script type="module" src="dist/main.js"></script>
+</head>
+<body>
+<canvas id="sky" class="sky" aria-hidden="true"></canvas>
+
+<div class="corner corner--tl">
+  <button class="chip" id="links-toggle" aria-expanded="false" aria-controls="links-panel" data-widget="links">Links</button>
+  <form class="search" id="search" data-widget="search" role="search">
+    <input class="search__input" id="search-input" type="search" name="q" placeholder="Search" aria-label="Search the web" autocomplete="off">
+  </form>
+</div>
+
+<div class="corner corner--tr" data-widget="weather">
+  <button class="weather" id="weather" title="Weather"></button>
+</div>
+
+<main class="center">
+  <p class="date" id="date"></p>
+  <h1 class="clock" id="clock"></h1>
+  <p class="greeting" id="greeting"></p>
+
+  <form class="ask" id="name-form" hidden>
+    <label class="ask__label" for="name-input">Hello. What should I call you?</label>
+    <input class="ask__input" id="name-input" maxlength="40" autocomplete="off">
+  </form>
+
+  <section class="focus" id="focus" data-widget="focus">
+    <form class="ask" id="focus-form">
+      <label class="ask__label" for="focus-input">What is your main focus today?</label>
+      <input class="ask__input" id="focus-input" maxlength="120" autocomplete="off">
+    </form>
+    <div class="today" id="today" hidden>
+      <p class="today__label">Today</p>
+      <div class="today__row">
+        <label class="ds-check"><input type="checkbox" id="focus-done"><span class="today__text" id="focus-text"></span></label>
+        <button class="today__clear" id="focus-clear" aria-label="Clear focus">×</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="corner corner--bl">
+  <button class="chip" id="settings-toggle" aria-expanded="false" aria-controls="settings-panel">Settings</button>
+</div>
+
+<figure class="quote" id="quote" data-widget="quote">
+  <blockquote class="quote__text" id="quote-text"></blockquote>
+  <figcaption class="quote__by" id="quote-by"></figcaption>
+</figure>
+
+<div class="corner corner--br" data-widget="todo">
+  <button class="chip" id="todo-toggle" aria-expanded="false" aria-controls="todo-panel">To do <span class="chip__count" id="todo-count"></span></button>
+</div>
+
+<section class="panel ds-panel panel--tl" id="links-panel" hidden aria-label="Links">
+  <header class="ds-panel__head"><h2 class="ds-label">Links</h2></header>
+  <ul class="list" id="links-list" data-empty="No links yet."></ul>
+  <form class="add" id="links-form">
+    <input class="ds-input" name="title" placeholder="Name" aria-label="Link name">
+    <input class="ds-input" name="url" placeholder="example.com" aria-label="Link address" required>
+    <button class="ds-btn ds-btn--sm" type="submit">Add</button>
+  </form>
+</section>
+
+<section class="panel ds-panel panel--br" id="todo-panel" hidden aria-label="To do">
+  <header class="ds-panel__head">
+    <h2 class="ds-label">To do</h2>
+    <button class="ds-btn ds-btn--ghost ds-btn--sm" id="todo-clear">Clear done</button>
+  </header>
+  <ul class="list" id="todo-list" data-empty="Nothing to do."></ul>
+  <form class="add add--one" id="todo-form">
+    <input class="ds-input" name="text" placeholder="New to-do" aria-label="New to-do" maxlength="200" required>
+  </form>
+</section>
+
+<section class="panel ds-panel panel--bl" id="settings-panel" hidden aria-label="Settings">
+  <header class="ds-panel__head"><h2 class="ds-label">Settings</h2></header>
+  <form class="settings" id="settings-form">
+    <label class="ds-field"><span class="ds-label">Name</span><input class="ds-input" name="name" maxlength="40" autocomplete="off"></label>
+    <div class="ds-field">
+      <span class="ds-label">Weather location</span>
+      <div class="row">
+        <input class="ds-input" name="place" placeholder="City" autocomplete="off">
+        <button class="ds-btn ds-btn--sm" type="button" id="place-set">Set</button>
+      </div>
+      <span class="ds-hint" id="place-status"></span>
+    </div>
+    <div class="row">
+      <label class="ds-switch"><input type="checkbox" name="hour24">24-hour clock</label>
+      <label class="ds-switch"><input type="checkbox" name="fahrenheit">°F</label>
+    </div>
+    <fieldset class="group">
+      <legend class="ds-label">Show</legend>
+      <label class="ds-switch"><input type="checkbox" name="show.links">Links</label>
+      <label class="ds-switch"><input type="checkbox" name="show.search">Search</label>
+      <label class="ds-switch"><input type="checkbox" name="show.weather">Weather</label>
+      <label class="ds-switch"><input type="checkbox" name="show.focus">Focus</label>
+      <label class="ds-switch"><input type="checkbox" name="show.quote">Quote</label>
+      <label class="ds-switch"><input type="checkbox" name="show.todo">To do</label>
+    </fieldset>
+    <fieldset class="group">
+      <legend class="ds-label">Sky</legend>
+      <label class="ds-switch"><input type="checkbox" name="sky.aurora">Aurora</label>
+      <label class="ds-switch"><input type="checkbox" name="sky.chart">Star chart</label>
+      <label class="ds-switch"><input type="checkbox" name="sky.meteors">Meteors</label>
+      <label class="ds-switch"><input type="checkbox" name="sky.clouds">Clouds</label>
+      <label class="ds-switch"><input type="checkbox" name="sky.mountains">Mountains</label>
+      <label class="ds-switch"><input type="checkbox" name="sky.koi">Koi pond</label>
+    </fieldset>
+  </form>
+</section>
+</body>
+</html>

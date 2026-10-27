@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en" data-ds="nightglass">
+<head>
+<meta charset="utf-8">
+<title>Theme frame</title>
+<link rel="stylesheet" href="../newtab/vendor/css/base.css">
+<link rel="stylesheet" href="../newtab/vendor/css/nightglass.css">
+<link rel="stylesheet" href="../newtab/onedark.css">
+<style>
+  html, body { margin: 0; overflow: hidden; background: #181a1f; }
+  .view { position: relative; overflow: hidden; }
+  .scene { position: absolute; top: 0; left: 0; }
+  .scene canvas { display: block; width: 100%; height: 100%; }
+  .shade { position: absolute; inset: 0; background: rgba(24, 26, 31, var(--shade)); }
+  #deco { position: absolute; inset: 0; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<div class="view" id="view"><div class="scene" id="scene"><canvas id="c"></canvas></div><div class="shade"></div><canvas id="deco"></canvas></div>
+<script type="module">
+  // Stars and a small polar chart for the tab strip. The image is left-aligned and tiled, so the
+  // compass sits at a fixed x that most windows show (px), level with the tabs (py).
+  // ?w=3840&h=160&sh=220&px=1180&py=40&top=16&shade=0.35
+  // Chrome draws the frame image about 16px above the tab strip's top, so `top` is where decoration starts.
+  import sky from '../newtab/vendor/backdrops/sky.js';
+
+  const q = new URLSearchParams(location.search);
+  const num = (k, d) => (q.has(k) ? +q.get(k) : d);
+  const w = num('w', 3840), h = num('h', 160), sh = num('sh', 220);
+  document.getElementById('view').style.cssText = `width:${w}px;height:${h}px;--shade:${num('shade', 0.35)}`;
+  document.getElementById('scene').style.cssText = `width:${w}px;height:${sh}px`;
+  const px = num('px', 1180);
+  sky(document.getElementById('c'), {
+    aurora: false, clouds: false, meteors: false, mountains: false, koi: false, transparent: true,
+    pole: [px / w, num('py', 40) / sh],
+  });
+
+  // An hour tape along the top edge (24h per tile, like the chart's right-ascension scale), registration
+  // crosses between the hours, and a blue index mark above the compass. Every spacing divides w, so tiles meet cleanly.
+  const deco = document.getElementById('deco');
+  const dpr = devicePixelRatio;
+  deco.width = w * dpr;
+  deco.height = h * dpr;
+  const ctx = deco.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const ink = (a) => `rgba(171, 178, 191, ${a})`;
+  const hour = w / 24;
+  const top = num('top', 16);
+  try { await document.fonts.load('500 8px "IBM Plex Mono"'); } catch {}
+
+  ctx.fillStyle = ink(0.08);
+  ctx.fillRect(0, top, w, 1);
+  for (let x = 0; x < w; x += hour / 8) {
+    const i = Math.round(x / (hour / 8));
+    const [len, a] = i % 8 === 0 ? [7, 0.3] : i % 4 === 0 ? [4, 0.2] : [2, 0.13];
+    ctx.fillStyle = ink(a);
+    ctx.fillRect(Math.round(x), top, 1, len);
+  }
+  ctx.font = '500 8px "IBM Plex Mono", ui-monospace, monospace';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = ink(0.24);
+  for (let k = 0; k < 24; k++) ctx.fillText(`${String(k).padStart(2, '0')}h`, Math.round(k * hour) + 4, top + 3);
+
+  const cross = (x, y, r, a) => {
+    ctx.fillStyle = ink(a);
+    ctx.fillRect(x - r, y, r * 2 + 1, 1);
+    ctx.fillRect(x, y - r, 1, r * 2 + 1);
+  };
+  for (let k = 0; k < 24; k += 2) {
+    const x = Math.round((k + 0.5) * hour);
+    if (Math.abs(x - px) > 120) cross(x, top + 30, 3, 0.22);
+  }
+
+  ctx.fillStyle = 'rgba(97, 175, 239, 0.85)';
+  ctx.fillRect(px, top, 1, 9);
+  ctx.beginPath();
+  ctx.moveTo(px - 3.5, top + 11);
+  ctx.lineTo(px + 4.5, top + 11);
+  ctx.lineTo(px + 0.5, top + 15);
+  ctx.closePath();
+  ctx.fill();
+</script>
+</body>
+</html>

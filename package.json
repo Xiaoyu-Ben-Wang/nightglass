@@ -1,0 +1,15 @@
+{
+  "name": "browser-customization",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p newtab",
+    "watch": "tsc -p newtab --watch",
+    "check": "tsc -p newtab --noEmit",
+    "frame": "node tools/render-frame.ts"
+  },
+  "devDependencies": {
+    "@types/chrome": "0.3.5",
+    "typescript": "7.0.2"
+  }
+}
