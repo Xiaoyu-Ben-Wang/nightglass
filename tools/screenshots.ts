@@ -12,7 +12,7 @@ const out = join(root, 'docs', 'screenshots');
 const W = 1440, H = 900;
 
 // Demo data, so no real name or location appears in the images.
-const NAME = 'Sam';
+const NAME = 'User';
 const PLACE = { name: 'Lisbon, Lisbon, PT', lat: 38.717, lon: -9.133, tz: 'Europe/Lisbon' };
 
 interface Scene { name: string; query: string; code: number; temp: number; settings?: boolean }

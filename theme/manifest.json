@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Nightglass One Dark",
   "version": "1.7.1",
-  "description": "One Dark slate with faint stars and a polar compass in the tab strip.",
+  "description": "One Dark browser theme with stars and a compass in the tab strip.",
   "theme": {
     "images": {
       "theme_frame": { "100": "images/theme_frame.png", "200": "images/theme_frame@2x.png" },

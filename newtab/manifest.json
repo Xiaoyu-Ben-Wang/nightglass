@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Nightglass New Tab",
   "version": "1.1.0",
-  "description": "A calm new tab over a live polar sky: clock, daily focus, to-dos, links, weather and a quote.",
+  "description": "New tab page with a clock, daily focus, to-dos, links, weather and a quote over a star chart.",
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },

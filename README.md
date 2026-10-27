@@ -4,6 +4,8 @@ A browser theme and new tab page for Chrome and Brave, in One Dark colors.
 
 The new tab has a clock, a daily focus, to-dos, links, weather and a quote. The background is a star chart with the sun, moon and current weather drawn on top.
 
+[Try the new tab in your browser](https://xiaoyu-ben-wang.github.io/nightglass/). The demo stores its settings in the page instead of syncing them.
+
 ![New tab, partly cloudy](docs/screenshots/day.png)
 
 | | |
@@ -24,12 +26,16 @@ The theme and new tab are separate extensions because browser themes only suppor
 
 ## Install
 
+Download `nightglass-theme.zip` and `nightglass-new-tab.zip` from the [latest release](https://github.com/Xiaoyu-Ben-Wang/nightglass/releases/latest) and unzip them. Open `chrome://extensions` (or `brave://extensions`), turn on Developer mode, click **Load unpacked**, and select each unzipped folder.
+
+To load from the repo instead:
+
 ```bash
 pnpm install
 pnpm run build
 ```
 
-Open `chrome://extensions` (or `brave://extensions`), turn on Developer mode, click **Load unpacked**, and select `theme/`, then `newtab/`. After editing `newtab/src/`, run the build again and reload the extension.
+Then load `theme/` and `newtab/` the same way. After editing `newtab/src/`, run the build again and reload the extension.
 
 To install a copy outside the repo:
 
@@ -136,6 +142,8 @@ URL parameters for testing the sky:
 | `pnpm run watch` | Compiles on change |
 | `pnpm run check` | Type-checks |
 | `pnpm run export` | Builds and copies both extensions out of the repo |
+| `pnpm run release` | Writes both extension zips and the demo site to `release/` |
+| `pnpm run pages` | Pushes `release/site/` to the `gh-pages` branch |
 | `pnpm run screenshots` | Regenerates `docs/screenshots/` (run `build` first) |
 | `pnpm run frame` | Renders the theme's frame image |
 

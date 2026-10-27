@@ -8,7 +8,9 @@
     "check": "tsc -p newtab --noEmit",
     "frame": "node tools/render-frame.ts",
     "export": "node tools/export.ts",
-    "screenshots": "node tools/screenshots.ts"
+    "screenshots": "node tools/screenshots.ts",
+    "release": "node tools/release.ts",
+    "pages": "node tools/pages.ts"
   },
   "devDependencies": {
     "@types/chrome": "0.3.5",
