@@ -1,5 +1,6 @@
 import { $, h } from './dom.js';
 import { onSettings, settings, updateSettings } from './settings.js';
+import { roll } from './motion.js';
 import { longDate, parts } from './time.js';
 
 const clock = $('clock');
@@ -14,6 +15,22 @@ function partOfDay(hour: number): string {
   return 'evening';
 }
 
+let shown = '';
+
+/** Draws the time one character per slot; characters that changed since the last minute roll in. */
+function drawTime(time: string, ampm: string): void {
+  const prev = shown;
+  shown = time;
+  const slots = [...time].map((ch) => h('span', { class: 'digit' }, h('span', { class: 'digit__now' }, ch)));
+  clock.replaceChildren(...slots, ...(ampm ? [h('span', { class: 'clock__ampm' }, ampm)] : []));
+  if (!prev) return;
+  // Align from the right so 9:59 -> 10:00 compares minutes with minutes.
+  slots.forEach((slot, i) => {
+    const old = prev[prev.length - (time.length - i)];
+    if (old !== undefined && old !== time[i]) roll(slot, old);
+  });
+}
+
 function tick(): void {
   const now = new Date();
   const { hour24, name } = settings();
@@ -23,7 +40,7 @@ function tick(): void {
   const ampm = hour24 ? '' : hour < 12 ? 'AM' : 'PM';
   if (clock.dataset.time !== time + ampm) {
     clock.dataset.time = time + ampm;
-    clock.replaceChildren(time, ...(ampm ? [h('span', { class: 'clock__ampm' }, ampm)] : []));
+    drawTime(time, ampm);
     date.textContent = longDate(now);
     document.title = `${time}${ampm ? ` ${ampm}` : ''}`;
   }

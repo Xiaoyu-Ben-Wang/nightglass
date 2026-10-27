@@ -2,6 +2,7 @@
 // Whichever source answers, the quote is cached for the rest of the day.
 import { $ } from './dom.js';
 import { onSettings, settings } from './settings.js';
+import { swap } from './motion.js';
 import { load, save } from './store.js';
 import { today } from './time.js';
 
@@ -46,8 +47,10 @@ async function pick(day: string, index: number): Promise<Quote> {
 }
 
 function show(q: Quote): void {
-  text.textContent = q.text;
-  by.textContent = q.author;
+  swap([text, by], () => {
+    text.textContent = q.text;
+    by.textContent = q.author;
+  });
 }
 
 export async function initQuote(): Promise<void> {
@@ -63,8 +66,11 @@ export async function initQuote(): Promise<void> {
   if (cached && cached.day === day) show(cached);
   else await next();
 
-  // Click for another; it becomes today's quote.
-  $('quote').addEventListener('click', () => void next());
+  // Click to look the quote up.
+  $('quote').addEventListener('click', () => {
+    const q = `"${text.textContent ?? ''}" ${by.textContent ?? ''}`.trim();
+    if (q.length > 3) window.open(`https://www.google.com/search?q=${encodeURIComponent(q)}`, '_blank', 'noopener');
+  });
 
   let api = settings().quoteApi;
   onSettings((s) => {

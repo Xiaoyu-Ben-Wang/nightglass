@@ -2,8 +2,9 @@
 import { $, h } from './dom.js';
 import { onSettings, settings, updateSettings, type Place, type Settings } from './settings.js';
 import { load, save } from './store.js';
+import { setConditions } from './weatherfx.js';
 
-interface Reading { key: string; at: number; temp: number; code: number; day: boolean; hi: number; lo: number; tz: string }
+interface Reading { key: string; at: number; temp: number; code: number; day: boolean; hi: number; lo: number; tz: string; wind?: number; windDir?: number }
 
 const TTL = 30 * 60_000;
 const el = $<HTMLButtonElement>('weather');
@@ -47,7 +48,7 @@ async function read(place: Place, fahrenheit: boolean): Promise<Reading> {
   url.search = new URLSearchParams({
     latitude: String(place.lat),
     longitude: String(place.lon),
-    current: 'temperature_2m,weather_code,is_day',
+    current: 'temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m',
     daily: 'temperature_2m_max,temperature_2m_min',
     forecast_days: '1',
     timezone: 'auto',
@@ -65,9 +66,31 @@ async function read(place: Place, fahrenheit: boolean): Promise<Reading> {
     hi: d.daily.temperature_2m_max[0],
     lo: d.daily.temperature_2m_min[0],
     tz: d.timezone,
+    wind: d.current.wind_speed_10m,
+    windDir: d.current.wind_direction_10m,
   };
   await save('local', 'weather', reading);
   return reading;
+}
+
+// Temperature colour by °C: icy blue when cold, gold when mild to warm, red when extremely hot.
+const TEMP_STOPS: [number, [number, number, number]][] = [
+  [-20, [190, 214, 255]],
+  [-5, [125, 185, 245]],
+  [5, [97, 175, 239]],
+  [10, [86, 182, 194]],
+  [15, [200, 190, 150]],
+  [19, [209, 154, 102]],
+  [29, [209, 154, 102]],
+  [35, [226, 120, 84]],
+  [40, [232, 84, 84]],
+];
+
+export function tempColour(celsius: number): string {
+  const i = TEMP_STOPS.findIndex(([at]) => at > celsius);
+  const [a, b] = i === 0 ? [TEMP_STOPS[0]!, TEMP_STOPS[0]!] : i < 0 ? [TEMP_STOPS.at(-1)!, TEMP_STOPS.at(-1)!] : [TEMP_STOPS[i - 1]!, TEMP_STOPS[i]!];
+  const t = a === b ? 0 : (celsius - a[0]) / (b[0] - a[0]);
+  return `rgb(${a[1].map((v, j) => Math.round(v + (b[1][j]! - v) * t)).join(', ')})`;
 }
 
 let latest = 0;
@@ -75,6 +98,7 @@ let latest = 0;
 async function render(s: Settings): Promise<void> {
   const ticket = ++latest;
   if (!s.place) {
+    setConditions(null);
     el.replaceChildren();
     return;
   }
@@ -84,14 +108,19 @@ async function render(s: Settings): Promise<void> {
     // Open-Meteo names the place's zone; the clock uses it.
     const place = settings().place;
     if (place && r.tz && place.tz !== r.tz) void updateSettings({ place: { ...place, tz: r.tz } });
+    setConditions({ code: r.code, day: r.day, wind: r.wind, windDir: r.windDir });
+    const celsius = s.fahrenheit ? (r.temp - 32) * 5 / 9 : r.temp;
     el.title = `High ${Math.round(r.hi)}°, low ${Math.round(r.lo)}°`;
+    const temp = h('span', { class: 'weather__temp' }, `${Math.round(r.temp)}°`);
+    temp.style.color = tempColour(celsius);
     el.replaceChildren(
-      h('span', { class: 'weather__temp' }, `${Math.round(r.temp)}°`),
+      temp,
       h('span', { class: 'weather__sky' }, describe(r.code, r.day)),
       h('span', { class: 'weather__place' }, s.place.name.split(',')[0]!),
     );
   } catch {
     if (ticket !== latest) return;
+    setConditions(null);
     el.replaceChildren(h('span', { class: 'weather__place' }, 'Weather unavailable'));
   }
 }

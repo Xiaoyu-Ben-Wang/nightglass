@@ -6,7 +6,8 @@
     "build": "tsc -p newtab",
     "watch": "tsc -p newtab --watch",
     "check": "tsc -p newtab --noEmit",
-    "frame": "node tools/render-frame.ts"
+    "frame": "node tools/render-frame.ts",
+    "export": "node tools/export.ts"
   },
   "devDependencies": {
     "@types/chrome": "0.3.5",

@@ -47,8 +47,13 @@ function bindSettings(): void {
     field('fahrenheit').checked = s.fahrenheit;
     field('spin').value = s.spin;
     field('daylight').checked = s.daylight;
+    field('weatherFx').checked = s.weatherFx;
     for (const k of Object.keys(s.show) as (keyof Settings['show'])[]) field(`show.${k}`).checked = s.show[k];
-    for (const k of Object.keys(s.sky) as (keyof Settings['sky'])[]) field(`sky.${k}`).checked = s.sky[k];
+    // Older saved settings can still hold layers that no longer have a switch.
+    for (const k of Object.keys(s.sky) as (keyof Settings['sky'])[]) {
+      const box = form.elements.namedItem(`sky.${k}`) as HTMLInputElement | null;
+      if (box) box.checked = s.sky[k];
+    }
   };
   onSettings(fill);
 
@@ -61,7 +66,7 @@ function bindSettings(): void {
     } else if (input.name === 'name') {
       const name = input.value.trim();
       if (name) void updateSettings({ name });
-    } else if (input.name === 'hour24' || input.name === 'fahrenheit' || input.name === 'daylight') {
+    } else if (input.name === 'hour24' || input.name === 'fahrenheit' || input.name === 'daylight' || input.name === 'weatherFx') {
       void updateSettings({ [input.name]: input.checked });
     } else if (input.name === 'spin') {
       void updateSettings({ spin: input.value as Spin });
@@ -131,6 +136,14 @@ function bindVisibility(): void {
 function bindSearch(): void {
   const form = $<HTMLFormElement>('search');
   const input = $<HTMLInputElement>('search-input');
+  // A typed query keeps the field open after it loses focus.
+  input.addEventListener('input', () => form.classList.toggle('has-text', !!input.value));
+  input.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    input.value = '';
+    form.classList.remove('has-text');
+    input.blur();
+  });
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const text = input.value.trim();
@@ -143,7 +156,13 @@ function bindSearch(): void {
     const typing = e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable="true"]');
     if (e.key === '/' && !typing && settings().show.search) {
       e.preventDefault();
+      // A keyboard shortcut opens the field at once, without the reveal.
+      const form = $('search');
+      form.classList.add('instant');
       input.focus();
+      // Apply the open state with transitions off before turning them back on.
+      void getComputedStyle(form).clipPath;
+      form.classList.remove('instant');
     }
   });
 }

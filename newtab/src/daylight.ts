@@ -34,8 +34,8 @@ const WARM: Warm[] = [
 
 const RAD = Math.PI / 180;
 
-/** Sun elevation in degrees (USNO low-precision formulas, good to about a degree). */
-export function sunElevation(date: Date, lat: number, lon: number): number {
+/** Sun elevation, hour angle and declination (USNO low-precision formulas, good to about a degree). */
+function sunPosition(date: Date, lat: number, lon: number): { elev: number; ha: number; dec: number } {
   const d = date.getTime() / 86_400_000 - 10_957.5; // days since J2000
   const g = (357.529 + 0.98560028 * d) * RAD;
   const q = 280.459 + 0.98564736 * d;
@@ -44,8 +44,45 @@ export function sunElevation(date: Date, lat: number, lon: number): number {
   const dec = Math.asin(Math.sin(e) * Math.sin(L));
   const ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L));
   const gmst = (18.697374558 + 24.06570982441908 * d) * 15 * RAD;
-  const ha = gmst + lon * RAD - ra;
-  return Math.asin(Math.sin(lat * RAD) * Math.sin(dec) + Math.cos(lat * RAD) * Math.cos(dec) * Math.cos(ha)) / RAD;
+  const raw = gmst + lon * RAD - ra;
+  const ha = Math.atan2(Math.sin(raw), Math.cos(raw)); // -π..π, negative before solar noon
+  const elev = Math.asin(Math.sin(lat * RAD) * Math.sin(dec) + Math.cos(lat * RAD) * Math.cos(dec) * Math.cos(ha)) / RAD;
+  return { elev, ha, dec };
+}
+
+/** Sun elevation in degrees. */
+export function sunElevation(date: Date, lat: number, lon: number): number {
+  return sunPosition(date, lat, lon).elev;
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+// Height on screen from the share of today's peak elevation; the square root keeps the sun high for most of the day.
+const arc = (share: number) => 1.04 - 0.94 * Math.sign(share) * Math.sqrt(Math.abs(clamp(share, -0.2, 1)));
+
+/**
+ * Where to draw the sun, as fractions of the screen: it rises at the bottom on the east side, peaks near the
+ * top at solar noon, and sets off the bottom on the west side. East is on the left facing the equator.
+ */
+export function sunPlace(): { x: number; y: number; elev: number } {
+  const q = new URLSearchParams(location.search);
+  const pinned = q.get('sun');
+  if (pinned !== null) {
+    const elev = +pinned;
+    return { x: +(q.get('sunx') ?? 0.3), y: arc(elev / 45), elev };
+  }
+  const now = new Date();
+  const place = settings().place ?? { lat: 40, lon: -now.getTimezoneOffset() / 4 };
+  const { elev, ha, dec } = sunPosition(now, place.lat, place.lon);
+  const noon = 90 - Math.abs(place.lat - dec / RAD);
+  // Hour angle of sunset; polar day and night fall back to a half turn.
+  const cosH0 = -Math.tan(place.lat * RAD) * Math.tan(dec);
+  const h0 = Math.abs(cosH0) < 1 ? Math.acos(cosH0) : Math.PI;
+  const side = place.lat < 0 ? -1 : 1;
+  return {
+    x: 0.5 + side * 0.44 * clamp(ha / h0, -1.2, 1.2),
+    y: arc(elev / Math.max(5, noon)),
+    elev,
+  };
 }
 
 function mix(a: RGB, b: RGB, t: number): string {

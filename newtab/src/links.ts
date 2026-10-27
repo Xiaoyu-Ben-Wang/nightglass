@@ -1,4 +1,5 @@
 import { $, h } from './dom.js';
+import { leave } from './motion.js';
 import { load, save, uid, watch } from './store.js';
 
 interface Link { id: string; title: string; url: string }
@@ -31,12 +32,17 @@ function favicon(url: string): HTMLImageElement | string {
   return h('img', { src: src.href, alt: '' });
 }
 
+// The link just added; only it animates on the next render.
+let added = '';
+
 function render(): void {
   list.replaceChildren(...links.map((l) => {
     const del = h('button', { class: 'item__del', title: 'Remove', ariaLabel: `Remove ${l.title}` }, '×');
-    del.addEventListener('click', () => set(links.filter((x) => x.id !== l.id)));
-    return h('li', { class: 'item' }, h('a', { class: 'item__main', href: l.url }, favicon(l.url), l.title), del);
+    const li = h('li', { class: l.id === added ? 'item is-entering' : 'item' }, h('a', { class: 'item__main', href: l.url }, favicon(l.url), l.title), del);
+    del.addEventListener('click', () => leave(li, () => set(links.filter((x) => x.id !== l.id))));
+    return li;
   }));
+  added = '';
 }
 
 function normalize(raw: string): string | null {
@@ -63,7 +69,8 @@ export async function initLinks(): Promise<void> {
       address.reportValidity();
       return;
     }
-    set([...links, { id: uid(), title: title.value.trim() || new URL(url).hostname, url }]);
+    added = uid();
+    set([...links, { id: added, title: title.value.trim() || new URL(url).hostname, url }]);
     form.reset();
     title.focus();
   });

@@ -15,10 +15,12 @@ export interface Settings {
   place: Place | null;
   spin: Spin;
   daylight: boolean;
+  /** Draw the current weather over the sky. */
+  weatherFx: boolean;
   /** Quotable-compatible endpoint; empty uses only the bundled list. */
   quoteApi: string;
   show: Record<'links' | 'search' | 'weather' | 'focus' | 'quote' | 'todo', boolean>;
-  sky: Record<'moon' | 'aurora' | 'chart' | 'meteors' | 'clouds' | 'mountains' | 'koi', boolean>;
+  sky: Record<'moon' | 'chart' | 'meteors', boolean>;
 }
 
 export const DEFAULTS: Settings = {
@@ -28,9 +30,10 @@ export const DEFAULTS: Settings = {
   place: null,
   spin: 'medium',
   daylight: true,
+  weatherFx: true,
   quoteApi: 'https://api.quotable.io/quotes/random?maxLength=140',
   show: { links: true, search: true, weather: true, focus: true, quote: true, todo: true },
-  sky: { moon: true, aurora: false, chart: true, meteors: false, clouds: false, mountains: false, koi: false },
+  sky: { moon: true, chart: true, meteors: false },
 };
 
 const KEY = 'settings';
