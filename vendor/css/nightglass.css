@@ -1,0 +1,54 @@
+/*
+ * Nightglass — from calibre-server's night-sky library theme.
+ * Dark glass panels with registration-mark corners over a moving polar sky (backdrops/sky.js).
+ * Condensed caps for section titles, mono caps for controls, powder-blue accent light enough
+ * to carry dark text, aurora green for success.
+ */
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Cormorant+Garamond:ital,wght@1,500&display=swap");
+
+[data-ds="nightglass"] {
+  --night: #05060a;
+  --bg: #05060a;
+  --bg-2: #0a0d16;
+  --surface: rgba(8, 10, 17, 0.66);
+  --surface-solid: rgba(10, 12, 20, 0.94);
+  --wash: rgba(221, 227, 234, 0.05);
+  --ink: #dde3ea;
+  --ink-2: rgba(221, 227, 234, 0.72);
+  --ink-3: rgba(221, 227, 234, 0.42);
+  --line: rgba(221, 227, 234, 0.13);
+  --line-2: rgba(221, 227, 234, 0.26);
+  --accent: #b8e3e9;
+  --accent-2: #d0eef2;
+  --accent-ink: #b8e3e9;
+  --on-accent: #05060a;
+  --glow: rgba(184, 227, 233, 0.35);
+  --ok: #46f0aa;
+  --warn: #f2c46d;
+  --danger: #e5484d;
+
+  --font-display: "Barlow Condensed", "Bahnschrift", "Avenir Next Condensed", "Roboto Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+  --font-label: var(--font-mono);
+  /* book titles and authors only */
+  --font-serif: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --display-case: uppercase;
+  --display-weight: 700;
+  --display-tracking: 0;
+  --display-stretch: condensed;
+  --display-leading: 0.95;
+
+  --radius: 0px;
+  --radius-sm: 0px;
+  --panel-ornament: var(--ticks);
+  --tick: var(--ink-3);
+  --overlay: var(--dotgrid), radial-gradient(130% 100% at 50% 40%, transparent 55%, rgba(3, 4, 8, 0.7) 100%);
+
+  /* backdrops/sky.js */
+  --sky-ink: #dde3ea;
+  --sky-rim: #b8e3e9;
+  color-scheme: dark;
+  background: radial-gradient(120% 80% at 70% 0%, #0d1424 0%, #070a12 45%, var(--night) 100%) var(--night);
+}
+[data-ds="nightglass"] .ds-serif { font-family: var(--font-serif); font-style: italic; font-weight: 500; }

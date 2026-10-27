@@ -1,0 +1,100 @@
+/*
+ * Token contract. Every theme in themes/ fills in these semantic tokens, scoped to
+ * [data-ds="<theme>"] (on <html> for a whole site, or on any element to theme just that subtree).
+ * Components (components/components.css) read only these names, so they render in any theme.
+ *
+ * Defaults below are a neutral dark fallback, so an un-themed [data-ds] still reads.
+ */
+[data-ds] {
+  /* ---- colour: grounds ---- */
+  --bg: #0b0d12;                 /* page ground (backdrops paint over this) */
+  --bg-2: #12151c;               /* raised solid surface: inputs, wells */
+  --surface: rgba(14, 17, 24, 0.72);       /* panel fill; may be translucent over a backdrop */
+  --surface-solid: rgba(16, 19, 27, 0.96); /* menus, popovers, things that must cover */
+  --wash: rgba(255, 255, 255, 0.05);       /* hover / selected row tint */
+
+  /* ---- colour: ink ---- */
+  --ink: #e4e7ec;                /* body text */
+  --ink-2: rgba(228, 231, 236, 0.68); /* secondary text */
+  --ink-3: rgba(228, 231, 236, 0.4);  /* hints, placeholders, disabled */
+  --line: rgba(228, 231, 236, 0.13);  /* hairlines */
+  --line-2: rgba(228, 231, 236, 0.26);/* control borders */
+
+  /* ---- colour: accent and status ---- */
+  --accent: #9fc7ff;
+  --accent-2: #c3dcff;           /* hover / pressed */
+  --accent-ink: var(--accent);   /* accent used as text on --bg (may differ for contrast) */
+  --on-accent: #0b0d12;          /* text on a filled accent */
+  --glow: rgba(159, 199, 255, 0.35); /* focus ring / bloom colour */
+  --ok: #46d39a;
+  --warn: #f0b45a;
+  --danger: #ef5b5b;
+  --info: var(--accent);
+  --sel-bg: var(--accent);
+  --sel-ink: var(--on-accent);
+
+  /* ---- type ---- */
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--font-body);
+  --font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, Menlo, monospace;
+  --font-label: var(--font-mono);        /* eyebrows, buttons, nav */
+  --text-base: 15px;
+  --leading: 1.6;
+  --display-case: none;          /* uppercase | none */
+  --display-weight: 600;
+  --display-tracking: -0.01em;
+  --display-stretch: normal;     /* condensed for narrow display faces */
+  --display-leading: 1.05;
+  --label-case: uppercase;
+  --label-tracking: 0.1em;
+  --label-size: 11.5px;
+  --label-weight: 500;
+
+  /* ---- shape and depth ---- */
+  --radius: 0px;
+  --radius-sm: 0px;
+  --border-style: solid;         /* solid | dashed */
+  --panel-blur: blur(18px) saturate(140%);
+  --panel-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.8);
+  --panel-pad: 24px;
+  --panel-ornament: none;        /* extra background layer(s) drawn on panels, e.g. corner ticks */
+  --rule: 1px var(--border-style) var(--line);
+
+  /* ---- motion ---- */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 320ms;
+
+  /* ---- spacing scale (shared by all themes) ---- */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 72px;
+
+  /* ---- flourishes, all optional ---- */
+  --prompt: "";                  /* prefix on headings, e.g. "$ cd " in Lantern */
+  --bullet: "—";                 /* list marker */
+  --overlay: none;               /* full-surface overlay (scanlines, grain, dot grid) */
+}
+
+/* Registration-mark corners, reusable by any theme as --panel-ornament: var(--ticks). */
+[data-ds] {
+  --tick: var(--ink-3);
+  --ticks:
+    linear-gradient(var(--tick), var(--tick)) left top / 12px 1px no-repeat,
+    linear-gradient(var(--tick), var(--tick)) left top / 1px 12px no-repeat,
+    linear-gradient(var(--tick), var(--tick)) right top / 12px 1px no-repeat,
+    linear-gradient(var(--tick), var(--tick)) right top / 1px 12px no-repeat,
+    linear-gradient(var(--tick), var(--tick)) left bottom / 12px 1px no-repeat,
+    linear-gradient(var(--tick), var(--tick)) left bottom / 1px 12px no-repeat,
+    linear-gradient(var(--tick), var(--tick)) right bottom / 12px 1px no-repeat,
+    linear-gradient(var(--tick), var(--tick)) right bottom / 1px 12px no-repeat;
+  --scanlines: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, 0.22) 2px 3px);
+  --dotgrid: radial-gradient(color-mix(in srgb, var(--ink) 7%, transparent) 1px, transparent 1.2px) 0 0 / 24px 24px;
+}

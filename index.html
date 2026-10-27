@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en" data-ds="nightglass">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New Tab</title>
+<link rel="stylesheet" href="vendor/css/base.css">
+<link rel="stylesheet" href="vendor/css/components.css">
+<link rel="stylesheet" href="vendor/css/nightglass.css">
+<link rel="stylesheet" href="onedark.css">
+<link rel="stylesheet" href="newtab.css">
+<script type="module" src="dist/main.js"></script>
+</head>
+<body>
+<canvas id="sky" class="sky" aria-hidden="true"></canvas>
+<div class="horizon" aria-hidden="true"></div>
+<canvas id="weather-layer" class="layer" aria-hidden="true"></canvas>
+<canvas id="atmosphere" class="layer" aria-hidden="true"></canvas>
+<figure class="moon" id="moon">
+  <svg viewBox="-34 -34 68 68" aria-hidden="true">
+    <path class="moon__ticks" id="moon-ticks"></path>
+    <circle class="moon__ring" r="20"></circle>
+    <path class="moon__lit" id="moon-disc"></path>
+  </svg>
+  <figcaption class="moon__label" id="moon-label"></figcaption>
+</figure>
+
+<div class="corner corner--tl">
+  <button class="chip chip--icon" id="links-toggle" aria-expanded="false" aria-controls="links-panel" data-widget="links" title="Links" aria-label="Links">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4h11M2.5 8h11M2.5 12h11"/></svg>
+  </button>
+  <form class="search" id="search" data-widget="search" role="search">
+    <label class="search__icon" for="search-input" title="Search">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.4 10.4L14 14"/></svg>
+    </label>
+    <input class="search__input" id="search-input" type="search" placeholder="Search" aria-label="Search the web" autocomplete="off">
+  </form>
+</div>
+
+<div class="corner corner--tr" data-widget="weather">
+  <button class="weather" id="weather"></button>
+</div>
+
+<main class="center">
+  <p class="date" id="date"></p>
+  <h1 class="clock" id="clock"></h1>
+  <p class="greeting" id="greeting"></p>
+
+  <form class="ask" id="name-form" hidden>
+    <label class="ask__label" for="name-input">Hello. What should I call you?</label>
+    <input class="ask__input" id="name-input" maxlength="40" autocomplete="off">
+  </form>
+
+  <section class="focus" data-widget="focus">
+    <form class="ask" id="focus-form">
+      <label class="ask__label" for="focus-input">What is your main focus today?</label>
+      <input class="ask__input" id="focus-input" maxlength="120" autocomplete="off">
+    </form>
+    <div class="today" id="today" hidden>
+      <p class="today__label">Today</p>
+      <div class="today__row">
+        <label class="ds-check"><input type="checkbox" id="focus-done"><span class="today__text" id="focus-text"></span></label>
+        <button class="today__clear" id="focus-clear" aria-label="Clear focus">×</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="corner corner--bl">
+  <button class="chip" id="settings-toggle" aria-expanded="false" aria-controls="settings-panel">Settings</button>
+</div>
+
+<figure class="quote" id="quote" data-widget="quote" title="Search for this quote">
+  <blockquote class="quote__text" id="quote-text"></blockquote>
+  <figcaption class="quote__by" id="quote-by"></figcaption>
+</figure>
+
+<div class="corner corner--br" data-widget="todo">
+  <button class="chip" id="todo-toggle" aria-expanded="false" aria-controls="todo-panel">To do <span class="chip__count" id="todo-count"></span></button>
+</div>
+
+<section class="panel ds-panel panel--tl" id="links-panel" hidden aria-label="Links">
+  <header class="ds-panel__head"><h2 class="ds-label">Links</h2></header>
+  <ul class="list" id="links-list" data-empty="No links yet."></ul>
+  <form class="add" id="links-form">
+    <input class="ds-input" name="title" placeholder="Name" aria-label="Link name">
+    <input class="ds-input" name="url" placeholder="example.com" aria-label="Link address" required>
+    <button class="ds-btn ds-btn--sm" type="submit">Add</button>
+  </form>
+</section>
+
+<section class="panel ds-panel panel--br" id="todo-panel" hidden aria-label="To do">
+  <header class="ds-panel__head">
+    <h2 class="ds-label">To do</h2>
+    <button class="ds-btn ds-btn--ghost ds-btn--sm" id="todo-clear">Clear done</button>
+  </header>
+  <ul class="list" id="todo-list" data-empty="Nothing to do."></ul>
+  <form class="add add--one" id="todo-form">
+    <input class="ds-input" name="text" placeholder="New to-do" aria-label="New to-do" maxlength="200" required>
+  </form>
+</section>
+
+<section class="panel ds-panel panel--bl" id="settings-panel" hidden aria-label="Settings">
+  <header class="ds-panel__head"><h2 class="ds-label">Settings</h2></header>
+  <form class="settings" id="settings-form">
+    <fieldset class="group">
+      <legend class="ds-label">General</legend>
+      <label class="field wide"><span class="field__label">Name</span><input class="ds-input" name="name" maxlength="40" autocomplete="off"></label>
+      <label class="ds-switch wide"><input type="checkbox" name="hour24">24-hour clock</label>
+    </fieldset>
+    <fieldset class="group">
+      <legend class="ds-label">Show</legend>
+      <label class="ds-switch"><input type="checkbox" name="show.links">Links</label>
+      <label class="ds-switch"><input type="checkbox" name="show.search">Search</label>
+      <label class="ds-switch"><input type="checkbox" name="show.weather">Weather</label>
+      <label class="ds-switch"><input type="checkbox" name="show.focus">Focus</label>
+      <label class="ds-switch"><input type="checkbox" name="show.quote">Quote</label>
+      <label class="ds-switch"><input type="checkbox" name="show.todo">To do</label>
+    </fieldset>
+    <fieldset class="group">
+      <legend class="ds-label">Weather</legend>
+      <div class="field wide">
+        <label class="field__label" for="place-input">Location</label>
+        <div class="locate">
+          <input class="ds-input locate__input" id="place-input" name="place" placeholder="City" autocomplete="off" spellcheck="false">
+          <button class="locate__btn" type="button" id="place-locate" title="Use my location" aria-label="Use my location">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="4.5"/><path d="M8 0.5v3M8 12.5v3M0.5 8h3M12.5 8h3"/><circle class="locate__dot" cx="8" cy="8" r="1.2"/></svg>
+          </button>
+        </div>
+      </div>
+      <span class="ds-hint wide" id="place-status"></span>
+      <label class="ds-switch"><input type="checkbox" name="weatherFx">Effects</label>
+      <label class="ds-switch unit" aria-label="Fahrenheit"><span>°C</span><input type="checkbox" name="fahrenheit"><span>°F</span></label>
+    </fieldset>
+    <fieldset class="group">
+      <legend class="ds-label">Sun &amp; moon</legend>
+      <label class="ds-switch" title="The sun, and the sky's colour through the day"><input type="checkbox" name="daylight">Daylight</label>
+      <label class="ds-switch"><input type="checkbox" name="sky.moon">Moon</label>
+    </fieldset>
+    <fieldset class="group">
+      <legend class="ds-label">Stars</legend>
+      <label class="ds-switch"><input type="checkbox" name="sky.chart">Chart</label>
+      <label class="ds-switch"><input type="checkbox" name="sky.meteors">Meteors</label>
+      <label class="field wide"><span class="field__label">Spin</span>
+        <select class="ds-select" name="spin">
+          <option value="off">Off</option>
+          <option value="slow">Slow</option>
+          <option value="medium">Medium</option>
+          <option value="fast">Fast</option>
+        </select>
+      </label>
+    </fieldset>
+    <fieldset class="group">
+      <legend class="ds-label">Quote</legend>
+      <label class="field wide"><span class="field__label">Source</span><input class="ds-input" name="quoteApi" type="url" placeholder="Bundled quotes only" autocomplete="off" spellcheck="false"></label>
+    </fieldset>
+  </form>
+</section>
+</body>
+</html>
