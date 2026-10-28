@@ -293,7 +293,7 @@ export default function mount(canvas, opts = {}) {
         dist: reach * Math.sqrt(Math.random()),
         r: big ? rand(1, 1.5) : rand(0.35, 0.9),
         big,
-        base: big ? rand(0.6, 0.9) : rand(0.15, 0.6),
+        base: big ? rand(0.7, 1) : rand(0.22, 0.7),
         speed: rand(0.5, 2),
         phase: rand(0, TAU),
       };
@@ -886,7 +886,7 @@ export default function mount(canvas, opts = {}) {
 
     for (const c of CONSTELLATIONS) {
       const pts = c.stars.map(place);
-      ctx.strokeStyle = ink(0.13);
+      ctx.strokeStyle = ink(0.19);
       ctx.beginPath();
       for (const [i, j] of c.lines) {
         ctx.moveTo(pts[i][0], pts[i][1]);
@@ -897,12 +897,12 @@ export default function mount(canvas, opts = {}) {
       c.stars.forEach(([, , mag], i) => {
         const [x, y] = pts[i];
         const bright = Math.max(0, 1 - mag / 5.5);
-        ctx.globalAlpha = 0.35 + 0.6 * bright;
+        ctx.globalAlpha = 0.45 + 0.55 * bright;
         ctx.beginPath();
         ctx.arc(x, y, 0.6 + 1.5 * bright, 0, TAU);
         ctx.fill();
         if (mag < 2.2) {
-          ctx.globalAlpha = 0.5 * bright;
+          ctx.globalAlpha = 0.6 * bright;
           const g = 8 + 14 * bright;
           ctx.drawImage(st.glow, x - g / 2, y - g / 2, g, g);
         }
