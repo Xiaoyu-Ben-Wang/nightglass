@@ -1,6 +1,7 @@
 // The weather scene: turns a WMO code into fog, rain, snow, hail and lightning, and runs the frame loop for the atmosphere.
 import { initAtmosphere, renderAtmosphere, resizeAtmosphere } from './atmosphere.js';
 import { nightness, sunPlace } from './daylight.js';
+import { moonPlace } from './moon.js';
 import { clamp, mixRGB, rgba, type RGB } from './math.js';
 import { reducedMotion } from './motion.js';
 import { onSettings, settings } from './settings.js';
@@ -354,9 +355,13 @@ function frame(t: number, dt: number): void {
   drawFog(dt);
   drawStorm(t, dt);
   const sun = sunPlace();
+  const moon = moonPlace();
+  // Dimmed by the weather like the sun, and starting from nothing once the sun is 1.6° down, after its rays have gone.
+  const moonVis = moon.lit * cur.sun * clamp((nightness() - 0.2) / 0.8);
   renderAtmosphere(dt, {
     cover: cur.cover, dark: cur.dark, day: d, wind: windX * DRIFT_PER_LEAN, still: reducedMotion.matches,
     sun: { ...sun, vis: settings().daylight ? cur.sun : 0 },
+    moon: { x: moon.x, y: moon.y, vis: moonVis },
   });
   drawRain(dt, d);
   drawHail(dt);

@@ -13,6 +13,8 @@ export interface AtmosphereInput {
   still: boolean;
   /** Sun position as screen fractions from the top left, its elevation in degrees, and how much of it shows. */
   sun: { x: number; y: number; elev: number; vis: number };
+  /** Moon position as screen fractions from the top left, and how bright it shows. */
+  moon: { x: number; y: number; vis: number };
 }
 
 const VERT = `#version 300 es
@@ -251,7 +253,7 @@ void main() {
   display: `${HEAD}
 uniform sampler2D uSource, uBeams, uLight;
 uniform vec2 uSun, uRes;
-uniform vec3 uLit, uShade, uLow, uSunCol;
+uniform vec3 uLit, uShade, uLow, uSunCol, uRayCol;
 uniform float uOpacity, uCloudOn, uSunR, uSunVis, uRayStrength, uGolden;
 const vec3 K = vec3(1.2, 3.0, 3.2); // extinction per unit of ink: high, mid, low
 vec4 over(vec4 top, vec4 under) { return top + under * (1.0 - top.a); }
@@ -298,8 +300,8 @@ void main() {
   vec3 backlit = uSunCol * exp(-r / (uSunR * 2.4)) * 0.35 * cloud.a * exp(-tauV * 0.25) * uSunVis;
 
   // Beams brighten the lit paths; shadowed air beside them dims slightly, so shafts read by contrast.
-  vec2 bs = texture(uBeams, vUv).rg * uRayStrength * uSunVis;
-  vec3 rays = uSunCol * 0.7 * bs.r;
+  vec2 bs = texture(uBeams, vUv).rg * uRayStrength;
+  vec3 rays = uRayCol * 0.7 * bs.r;
 
   // Light is screened over the sky: alpha at least the brightest channel keeps the output validly premultiplied.
   vec3 rgb = min(cloud.rgb + backlit + sun + rays, vec3(1.0));
@@ -480,15 +482,22 @@ function relax(rate: number, cover: number): void {
   dye.swap();
 }
 
-// Below this the sun is treated as gone and its passes are skipped.
+// Below this the sun or moon is treated as gone and its passes are skipped.
 const SUN_VISIBLE = 0.001;
+// Moonbeams at their brightest, a full moon in a clear night, against the sun's 1.
+const MOON_RAYS = 0.75;
+const MOON_COL = [0.8, 0.86, 1];
 
 export function renderAtmosphere(dt: number, p: AtmosphereInput): void {
   if (!gl) return;
   const cloudy = p.cover >= 0.005;
   const sunVis = clamp((p.sun.elev + 1.5) / 3) * p.sun.vis * p.day;
+  // Rays come from the sun while it shows, otherwise from the moon.
+  const bySun = sunVis > SUN_VISIBLE;
+  const rayVis = bySun ? sunVis : p.moon.vis * MOON_RAYS;
+  const shining = rayVis > SUN_VISIBLE;
   if (!cloudy) fresh = true;
-  if (!cloudy && sunVis <= SUN_VISIBLE) {
+  if (!cloudy && !shining) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clearColor(0, 0, 0, 0);
@@ -514,19 +523,20 @@ export function renderAtmosphere(dt: number, p: AtmosphereInput): void {
   const sunCol = mixRGB([1, 0.52, 0.3], [1, 0.92, 0.78], clamp((p.sun.elev + 1) / 12));
   const cloudOn = cloudy ? 1 : 0;
   if (cloudy) pass('light', light, { uSource: dye.read, uSun: sun, uRes: res, uSunVis: sunVis, uCloudOn: cloudOn });
-  if (sunVis > SUN_VISIBLE) {
+  if (shining) {
     const text = shadowCaster && textMask(shadowCaster);
     if (text) uploadMask(text);
-    pass('rays', rays, { uSource: dye.read, uMask: mask, uMaskScale: MASK_SCALE, uSun: sun, uRes: res, uCloudOn: cloudOn });
-    pass('beams', beams, { uRays: rays, uSun: sun, uRes: res });
+    const from = bySun ? sun : [p.moon.x, 1 - p.moon.y];
+    pass('rays', rays, { uSource: dye.read, uMask: mask, uMaskScale: MASK_SCALE, uSun: from, uRes: res, uCloudOn: cloudOn });
+    pass('beams', beams, { uRays: rays, uSun: from, uRes: res });
   }
   const lit = mixRGB(mixRGB([0.36, 0.39, 0.45], [0.95, 0.96, 0.98], p.day), [0.62, 0.65, 0.7], p.dark * 0.6);
   const shade = mixRGB(mixRGB([0.16, 0.18, 0.22], [0.58, 0.62, 0.69], p.day), [0.3, 0.32, 0.37], p.dark * 0.7);
   const low = mixRGB(mixRGB([0.2, 0.22, 0.27], [0.7, 0.74, 0.8], p.day), [0.34, 0.36, 0.41], p.dark * 0.7);
   pass('display', null, {
     uSource: dye.read, uBeams: beams, uLight: light, uSun: sun, uRes: res, uSunR: sunR, uSunCol: sunCol, uSunVis: sunVis,
-    uRayStrength: sunVis > SUN_VISIBLE ? 1 : 0, uCloudOn: cloudOn,
-    uGolden: sunVis > SUN_VISIBLE ? 1 - clamp(p.sun.elev / 12) : 0,
+    uRayStrength: shining ? rayVis : 0, uRayCol: bySun ? sunCol : MOON_COL, uCloudOn: cloudOn,
+    uGolden: bySun ? 1 - clamp(p.sun.elev / 12) : 0,
     uLit: lit, uShade: shade, uLow: low, uOpacity: (0.38 + 0.18 * p.cover) * (0.75 + 0.25 * p.day),
   });
 }
