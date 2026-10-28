@@ -485,7 +485,7 @@ function relax(rate: number, cover: number): void {
 // Below this the sun or moon is treated as gone and its passes are skipped.
 const SUN_VISIBLE = 0.001;
 // Moonbeams at their brightest, a full moon in a clear night, against the sun's 1.
-const MOON_RAYS = 0.75;
+const MOON_RAYS = 0.5;
 const MOON_COL = [0.8, 0.86, 1];
 
 export function renderAtmosphere(dt: number, p: AtmosphereInput): void {

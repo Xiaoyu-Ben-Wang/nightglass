@@ -21,6 +21,39 @@
     <path class="moon__ticks" id="moon-ticks"></path>
     <circle class="moon__ring" r="20"></circle>
     <path class="moon__lit" id="moon-disc"></path>
+    <defs>
+      <clipPath id="moon-clip"><path id="moon-clip-path"></path></clipPath>
+      <filter id="moon-soft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="0.7"></feGaussianBlur></filter>
+      <radialGradient id="moon-limb"><stop offset="0.6" stop-opacity="0"></stop><stop offset="1" stop-opacity="0.35"></stop></radialGradient>
+    </defs>
+    <!-- The near side, north up: the maria, a few named craters, and Tycho's rays. -->
+    <g clip-path="url(#moon-clip)">
+      <g class="moon__maria" filter="url(#moon-soft)">
+        <ellipse cx="-10" cy="1" rx="6" ry="9.5" transform="rotate(12 -10 1)"></ellipse>
+        <ellipse cx="-5" cy="-8" rx="5.2" ry="4.6"></ellipse>
+        <ellipse cx="0" cy="-14" rx="8.5" ry="1.6"></ellipse>
+        <circle cx="4" cy="-7" r="3.2"></circle>
+        <ellipse cx="7.5" cy="-1" rx="4.2" ry="3.4" transform="rotate(-20 7.5 -1)"></ellipse>
+        <ellipse cx="14" cy="-5" rx="2.2" ry="2.8"></ellipse>
+        <ellipse cx="11" cy="4.5" rx="2.4" ry="3.6" transform="rotate(15 11 4.5)"></ellipse>
+        <circle cx="6" cy="6.5" r="2"></circle>
+        <ellipse cx="-4" cy="7.5" rx="3.6" ry="2.5"></ellipse>
+        <circle cx="-10.5" cy="8.5" r="2"></circle>
+      </g>
+      <g class="moon__rays" filter="url(#moon-soft)">
+        <path d="M-2 14L-9 5M-2 14L1 4M-2 14L6 9M-2 14L-9 17M-2 14L3 19M-2 14L-4.5 4.5"></path>
+      </g>
+      <g class="moon__craters">
+        <circle cx="-2" cy="14" r="1.2"></circle>
+        <circle cx="-7" cy="-1" r="1.1"></circle>
+        <circle cx="-12" cy="-1" r="0.7"></circle>
+        <circle cx="-15" cy="-5" r="0.6"></circle>
+        <circle cx="-2" cy="-15" r="1"></circle>
+        <circle cx="9" cy="11" r="0.9"></circle>
+        <circle cx="4" cy="15" r="0.7"></circle>
+      </g>
+      <circle r="20" fill="url(#moon-limb)"></circle>
+    </g>
   </svg>
   <figcaption class="moon__label" id="moon-label"></figcaption>
 </figure>

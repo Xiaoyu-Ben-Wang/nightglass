@@ -46,6 +46,8 @@ function render(): void {
   const lit = Math.round(litShare(p) * 100);
   const name = NAMES[Math.round(p * 8) % 8]!;
   $('moon-disc').setAttribute('d', litPath(p));
+  // The surface shows only on the lit part.
+  document.getElementById('moon-clip-path')!.setAttribute('d', litPath(p));
   $('moon-label').textContent = `${name} · ${lit}%`;
   $('moon').title = `${name}, ${lit}% lit`;
 }

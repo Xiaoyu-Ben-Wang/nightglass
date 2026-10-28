@@ -53,6 +53,9 @@ body::after {
 .moon__ticks { stroke: var(--ink-3); stroke-width: 0.6; }
 .moon__ring { fill: color-mix(in srgb, var(--ink-2) 6%, transparent); stroke: color-mix(in srgb, var(--ink-2) 22%, transparent); stroke-width: 0.5; }
 .moon__lit { fill: var(--ink); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ink) 35%, transparent)); }
+.moon__maria { fill: color-mix(in srgb, var(--ink) 40%, #1b1f27); opacity: 0.42; }
+.moon__rays { stroke: white; stroke-width: 0.9; stroke-linecap: round; opacity: 0.1; }
+.moon__craters { fill: color-mix(in srgb, var(--ink) 60%, #1b1f27); stroke: white; stroke-width: 0.35; stroke-opacity: 0.18; opacity: 0.5; }
 .moon__label { font: 10px / 1 var(--font-mono); letter-spacing: var(--label-tracking); text-transform: uppercase; color: var(--ink-3); }
 [hidden] { display: none !important; }
 

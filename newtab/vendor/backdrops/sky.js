@@ -41,6 +41,19 @@ const KOI = [
   { odds: 0.15, base: '96, 168, 180', spot: '124, 192, 224' },
 ];
 const EYE = '8, 9, 14';
+// The shape a star flashes into at the peak of its twinkle: spikes as [angle in degrees, length], both ways.
+const TWINKLES = [
+  { odds: 0.3, name: 'round', rays: null },
+  { odds: 0.2, name: 'plus', rays: [[0, 1], [90, 1]] },
+  { odds: 0.15, name: 'diagonal', rays: [[45, 1], [135, 1]] },
+  { odds: 0.1, name: 'vertical', rays: [[90, 1]] },
+  { odds: 0.1, name: 'six', rays: [[90, 1], [30, 1], [150, 1]] },
+  { odds: 0.15, name: 'eight', rays: [[0, 1], [90, 1], [45, 0.55], [135, 0.55]] },
+];
+const pickTwinkle = (roll) => {
+  for (const tw of TWINKLES) if ((roll -= tw.odds) < 0) return tw.name;
+  return TWINKLES[0].name;
+};
 
 const BANDS = [
   { y: 0.2, amp: 0.05, freq: 0.0038, speed: 0.12, tall: 0.24, rgb: [70, 240, 170], alpha: 0.2 },
@@ -177,6 +190,34 @@ function inkGlow(ink) {
   return c;
 }
 
+// Thin tapered spikes through a small bright core, fading toward their tips.
+function inkSpikes(ink, rays) {
+  const c = canvasOf(64, 64);
+  const cc = c.getContext('2d');
+  cc.translate(32, 32);
+  // Gradients follow the transform, so this one is centred on the translated origin.
+  const g = cc.createRadialGradient(0, 0, 0, 0, 0, 32);
+  g.addColorStop(0, `rgba(${ink}, 1)`);
+  g.addColorStop(0.12, `rgba(${ink}, 0.55)`);
+  g.addColorStop(1, `rgba(${ink}, 0)`);
+  cc.fillStyle = g;
+  for (const [deg, len] of rays) {
+    cc.save();
+    cc.rotate((-deg * Math.PI) / 180);
+    cc.beginPath();
+    cc.moveTo(-32 * len, 0);
+    cc.lineTo(0, -2.2);
+    cc.lineTo(32 * len, 0);
+    cc.lineTo(0, 2.2);
+    cc.fill();
+    cc.restore();
+  }
+  cc.beginPath();
+  cc.arc(0, 0, 3.5, 0, TAU);
+  cc.fill();
+  return c;
+}
+
 // Thin stratus wisps: soft puffs squashed flat.
 function cloudSprite(width) {
   const height = width * 0.14;
@@ -260,6 +301,7 @@ export default function mount(canvas, opts = {}) {
     st.rim = s.rgb('--sky-rim', RIM).join(', ');
     st.bgStops = [s.css('--sky-glow', BG[0]), s.css('--sky-mid', BG[1]), s.css('--sky-deep', BG[2])];
     st.glow = inkGlow(st.ink);
+    st.twinkles = Object.fromEntries(TWINKLES.map((tw) => [tw.name, tw.rays ? inkSpikes(st.ink, tw.rays) : st.glow]));
     st.glyphs.clear();
   }
 
@@ -294,6 +336,7 @@ export default function mount(canvas, opts = {}) {
         r: big ? rand(1, 1.5) : rand(0.35, 0.9),
         big,
         base: big ? rand(0.7, 1) : rand(0.22, 0.7),
+        twinkle: pickTwinkle(Math.random()),
         speed: rand(0.5, 2),
         phase: rand(0, TAU),
       };
@@ -791,7 +834,8 @@ export default function mount(canvas, opts = {}) {
       const x = cx + Math.cos(star.angle + turn) * star.dist;
       const y = cy + Math.sin(star.angle + turn) * star.dist;
       if (x < -10 || y < -10 || x > w + 10 || y > h + 10) continue;
-      const a = star.base * (0.65 + 0.35 * Math.sin(t * star.speed + star.phase));
+      const wave = Math.sin(t * star.speed + star.phase);
+      const a = star.base * (0.65 + 0.35 * wave);
       ctx.globalAlpha = a;
       ctx.beginPath();
       ctx.arc(x, y, star.r, 0, TAU);
@@ -800,8 +844,19 @@ export default function mount(canvas, opts = {}) {
         ctx.globalAlpha = a * 0.6;
         ctx.drawImage(st.glow, x - 9, y - 9, 18, 18);
       }
+      flare(ctx, star.twinkle, x, y, star.big ? 26 : 10 + 12 * star.r, a, wave);
     }
     ctx.globalAlpha = 1;
+  }
+
+  // At the top of its twinkle a star briefly flashes into its shape.
+  function flare(ctx, twinkle, x, y, size, alpha, wave) {
+    if (wave <= 0.6) return;
+    const peak = ((wave - 0.6) / 0.4) ** 2;
+    const sprite = st.twinkles[twinkle];
+    const d = size * (0.55 + 0.45 * peak);
+    ctx.globalAlpha = alpha * peak * (sprite === st.glow ? 0.6 : 0.9);
+    ctx.drawImage(sprite, x - d / 2, y - d / 2, d, d);
   }
 
   // Polar star chart pivoting on Polaris, which stays put while everything else turns with the sky:
@@ -906,6 +961,10 @@ export default function mount(canvas, opts = {}) {
           const g = 8 + 14 * bright;
           ctx.drawImage(st.glow, x - g / 2, y - g / 2, g, g);
         }
+        // Each star's shape and rhythm come from its magnitude and place, so they stay put between frames.
+        const k = Math.abs(Math.sin(mag * 12.9898 + i * 78.233 + c.stars.length) * 43758.5453) % 1;
+        const wave = Math.sin(t * (0.5 + 1.5 * k) + k * TAU * 7);
+        flare(ctx, pickTwinkle(k), x, y, 12 + 18 * bright, 0.45 + 0.55 * bright, wave);
       });
       ctx.globalAlpha = 1;
     }
