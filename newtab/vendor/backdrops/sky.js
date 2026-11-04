@@ -50,6 +50,13 @@ const JELLY = [
   { rgb: [112, 206, 204], spot: '186, 240, 226' },
   { rgb: [218, 170, 214], spot: '246, 212, 232' },
 ].map((k) => ({ ...k, base: k.rgb.join(', '), sprite: null }));
+// bell scale: mostly small ones, the odd big one
+const JELLY_SIZES = [
+  { odds: 0.3, size: 0.45 },
+  { odds: 0.3, size: 0.7 },
+  { odds: 0.25, size: 1 },
+  { odds: 0.15, size: 1.6 },
+];
 // The shape a star flashes into at the peak of its twinkle: spikes as [angle in degrees, length], both ways.
 const TWINKLES = [
   { odds: 0.3, name: 'round', rays: null },
@@ -585,7 +592,7 @@ export default function mount(canvas, opts = {}) {
   // ---------- jellyfish ----------
 
   function buildJellies(s) {
-    const n = Math.max(2, Math.min(5, Math.round((s.w * s.h) / 450000)));
+    const n = Math.max(3, Math.min(7, Math.round((s.w * s.h) / 320000)));
     st.jellies = Array.from({ length: n }, () => makeJelly(s, rand(s.h * 0.15, s.h * 0.9)));
     st.jellies.sort((a, b) => a.depth - b.depth);
     // a few seconds of drifting up front, so the tentacles already trail
@@ -594,15 +601,18 @@ export default function mount(canvas, opts = {}) {
 
   function makeJelly(s, y) {
     const depth = rand(0.4, 1);
-    const r = rand(4.5, 7) * CELL * (0.6 + 0.4 * depth);
+    let roll = Math.random();
+    const { size } = JELLY_SIZES.find((k) => (roll -= k.odds) < 0) || JELLY_SIZES[0];
+    const r = rand(4.5, 7) * CELL * size * (0.6 + 0.4 * depth);
     const x = rand(s.w * 0.05, s.w * 0.95);
-    const arms = Math.round(rand(4, 7));
+    const arms = Math.max(3, Math.round(rand(2, 4) + size * 2.5));
+    const long = (n) => Math.max(3, Math.round(n * Math.sqrt(size) * (0.6 + 0.4 * depth)));
     const tentacle = (at, oral) => ({
       at,
       oral,
       seg: CELL * (oral ? 0.8 : rand(0.85, 1.1)),
       sway: rand(0, TAU),
-      pts: Array.from({ length: Math.round((oral ? rand(5, 8) : rand(7, 12)) * (0.6 + 0.4 * depth)) }, (_, k) => ({ x, y: y + k * CELL })),
+      pts: Array.from({ length: long(oral ? rand(5, 8) : rand(7, 12)) }, (_, k) => ({ x, y: y + k * CELL })),
     });
     return {
       x, y, vx: 0, vy: 0,
@@ -610,15 +620,17 @@ export default function mount(canvas, opts = {}) {
       // each one leans its climb a little off vertical
       lean: rand(-0.3, 0.3),
       r,
+      size,
       depth,
       kind: JELLY[Math.floor(Math.random() * JELLY.length)],
-      period: rand(2.6, 4.2),
+      // little ones beat faster
+      period: rand(2.6, 4.2) * (0.6 + 0.4 * size),
       phase: rand(0, 1),
       squeeze: 0,
       tentacles: [
         ...Array.from({ length: arms }, (_, i) => tentacle((i / (arms - 1)) * 1.8 - 0.9, false)),
-        tentacle(-0.2, true),
-        tentacle(0.2, true),
+        // tiny ones have no room for the frilled arms
+        ...(size < 0.6 ? [] : [tentacle(-0.2, true), tentacle(0.2, true)]),
       ],
     };
   }
