@@ -1,4 +1,5 @@
 // Starts every widget once the settings have loaded.
+import './fonts.js';
 import sky from '../vendor/backdrops/sky.js';
 import { initClock } from './clock.js';
 import { initDaylight } from './daylight.js';

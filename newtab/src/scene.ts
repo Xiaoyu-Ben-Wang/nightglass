@@ -446,6 +446,8 @@ export function initScene(): void {
   new MutationObserver(redraw).observe(time, { childList: true, subtree: true, characterData: true });
   const sizes = new ResizeObserver(redraw);
   for (const el of time.parentElement!.children) sizes.observe(el);
+  // fonts arrive after first paint; redraw when each batch lands
+  document.fonts.addEventListener('loadingdone', redraw);
   void document.fonts.ready.then(redraw);
   // With no weather to animate the loop stops; the sun still moves, so redraw once a minute.
   setInterval(() => { if (!raf) frame(clock, 0); }, 60_000);
