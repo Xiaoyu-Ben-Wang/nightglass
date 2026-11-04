@@ -20,9 +20,10 @@ import { initWeather } from './weather.js';
 await initSettings();
 void initLocation();
 
-// The backdrop's aurora, clouds, mountains and koi stay off; the weather draws its own clouds.
+// The backdrop's aurora, clouds and mountains stay off; the weather draws its own clouds.
 const skyOptions = (s: Settings) => ({
-  chart: s.sky.chart, meteors: s.sky.meteors, aurora: false, clouds: false, mountains: false, koi: false,
+  chart: s.sky.chart, meteors: s.sky.meteors, koi: s.sky.koi, jellyfish: s.sky.jellyfish,
+  aurora: false, clouds: false, mountains: false,
   skyTurnSeconds: SPIN_SECONDS[s.spin],
 });
 const backdrop = sky($<HTMLCanvasElement>('sky'), { ...skyOptions(settings()), pole: [0.88, 0.32] });

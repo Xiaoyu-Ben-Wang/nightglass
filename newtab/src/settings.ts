@@ -21,7 +21,7 @@ export interface Settings {
   /** Quotable-compatible endpoint; empty uses only the bundled list. */
   quoteApi: string;
   show: Record<'links' | 'search' | 'weather' | 'focus' | 'quote' | 'todo', boolean>;
-  sky: Record<'moon' | 'chart' | 'meteors', boolean>;
+  sky: Record<'moon' | 'chart' | 'meteors' | 'koi' | 'jellyfish', boolean>;
 }
 
 const DEFAULTS: Settings = {
@@ -34,7 +34,7 @@ const DEFAULTS: Settings = {
   weatherFx: true,
   quoteApi: 'https://api.quotable.io/quotes/random?maxLength=140',
   show: { links: true, search: true, weather: true, focus: true, quote: true, todo: true },
-  sky: { moon: true, chart: true, meteors: false },
+  sky: { moon: true, chart: true, meteors: false, koi: true, jellyfish: true },
 };
 
 const KEY = 'settings';
