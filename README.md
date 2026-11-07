@@ -147,6 +147,7 @@ URL parameters for testing the sky:
 | `pnpm run pages` | Pushes `release/site/` to the `gh-pages` branch |
 | `pnpm run screenshots` | Regenerates `docs/screenshots/` (run `build` first) |
 | `pnpm run frame` | Renders the theme's frame image |
+| `pnpm run icons` | Renders the new tab's PNG icons from `newtab/icons/icon.svg` |
 
 The scripts look for Chrome or Brave in the default install locations. Set `CHROME` to use a different path.
 

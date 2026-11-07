@@ -11,7 +11,7 @@ export const EXTENSIONS = [
     name: 'Nightglass New Tab',
     slug: 'nightglass-new-tab',
     src: 'newtab',
-    files: ['manifest.json', 'newtab.html', 'newtab.css', 'onedark.css', 'dist', 'data', 'vendor'],
+    files: ['manifest.json', 'newtab.html', 'newtab.css', 'onedark.css', 'dist', 'data', 'vendor', 'icons'],
   },
 ] as const;
 
