@@ -1,6 +1,6 @@
 // The clock, date and greeting, and the first-run name prompt.
 import { $, h } from './dom.js';
-import { onSettings, settings, updateSettings } from './settings.js';
+import { onSettings, settings, settingsLoaded, updateSettings, type Settings } from './settings.js';
 import { roll } from './motion.js';
 import { longDate, parts } from './time.js';
 
@@ -77,13 +77,18 @@ export function initClock(): void {
     const name = nameInput.value.trim();
     if (name) void updateSettings({ name });
   });
-  onSettings((s) => {
-    nameForm.hidden = !!s.name;
+  let loaded = false;
+  const apply = (s: Settings) => {
+    // Until the stored name arrives, an empty name doesn't mean first run.
+    const onboarding = loaded && !s.name;
+    nameForm.hidden = !onboarding;
     greeting.hidden = !s.name;
-    document.body.classList.toggle('is-onboarding', !s.name);
-    if (!s.name) nameInput.focus();
+    document.body.classList.toggle('is-onboarding', onboarding);
+    if (onboarding) nameInput.focus();
     clock.dataset.time = '';
     tick();
-  });
+  };
+  onSettings(apply);
+  void settingsLoaded.then(() => { loaded = true; apply(settings()); });
   setInterval(tick, 1000);
 }

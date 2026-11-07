@@ -52,12 +52,21 @@ function merge(saved: Partial<Settings> | undefined): Settings {
   return { ...known(DEFAULTS, saved), show: known(DEFAULTS.show, saved?.show), sky: known(DEFAULTS.sky, saved?.sky) };
 }
 
+let markLoaded: () => void;
+/** Resolves once the stored settings have been read, which can be after the page starts on the defaults. */
+export const settingsLoaded = new Promise<void>((resolve) => { markLoaded = resolve; });
+
 export async function initSettings(): Promise<Settings> {
-  current = merge(await load<Partial<Settings>>('sync', KEY, {}));
   watch(KEY, (v) => {
     current = merge(v as Partial<Settings>);
     subscribers.forEach((fn) => fn(current));
+    markLoaded();
   });
+  const timedOut = {};
+  const saved = await load<Partial<Settings>>('sync', KEY, {}, timedOut);
+  current = merge(saved);
+  // A late read arrives through watch instead.
+  if (saved !== timedOut) markLoaded();
   return current;
 }
 
@@ -69,6 +78,10 @@ export function onSettings(fn: (s: Settings) => void): void {
 }
 
 export async function updateSettings(patch: Partial<Settings>): Promise<void> {
+  current = merge({ ...current, ...patch });
+  subscribers.forEach((fn) => fn(current));
+  // Saving before the stored settings arrive would overwrite them with the defaults.
+  await settingsLoaded;
   current = merge({ ...current, ...patch });
   subscribers.forEach((fn) => fn(current));
   await save('sync', KEY, current);

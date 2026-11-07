@@ -1,5 +1,5 @@
 // The weather place: detected at most every 6 hours, or a typed city, which stops detection until "Use my location".
-import { settings, updateSettings, type Place } from './settings.js';
+import { settings, settingsLoaded, updateSettings, type Place } from './settings.js';
 import { load, save } from './store.js';
 
 const EVERY = 6 * 3_600_000;
@@ -41,6 +41,7 @@ export async function useMyLocation(): Promise<Place> {
 }
 
 export async function initLocation(): Promise<void> {
+  await settingsLoaded;
   const place = settings().place;
   if (place && !place.auto) return;
   if (Date.now() - (await load('local', 'locatedAt', 0)) < EVERY && place) return;

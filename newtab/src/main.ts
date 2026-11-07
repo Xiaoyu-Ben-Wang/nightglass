@@ -18,8 +18,17 @@ import { initSettings, onSettings, settings, SPIN_SECONDS, type Settings } from 
 import { initTodos } from './todos.js';
 import { initWeather } from './weather.js';
 
+/** Runs one widget's setup; a failure is logged and the rest of the page still starts. */
+async function start(setup: () => unknown): Promise<void> {
+  try {
+    await setup();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
 await initSettings();
-void initLocation();
+void start(initLocation);
 
 // The backdrop's aurora, clouds and mountains stay off; the weather draws its own clouds.
 const skyOptions = (s: Settings) => ({
@@ -27,17 +36,19 @@ const skyOptions = (s: Settings) => ({
   aurora: false, clouds: false, mountains: false,
   skyTurnSeconds: SPIN_SECONDS[s.spin],
 });
-const backdrop = sky($<HTMLCanvasElement>('sky'), { ...skyOptions(settings()), pole: [0.88, 0.32] });
-onSettings((s) => backdrop.set(skyOptions(s)));
-initDaylight();
-initMoon();
-initScene();
+void start(() => {
+  const backdrop = sky($<HTMLCanvasElement>('sky'), { ...skyOptions(settings()), pole: [0.88, 0.32] });
+  onSettings((s) => backdrop.set(skyOptions(s)));
+});
+void start(initDaylight);
+void start(initMoon);
+void start(initScene);
 
-initClock();
-initPanels();
-initSettingsForm();
-initSearch();
-void initQuote();
-initWeather(() => openPanel('settings-panel'));
-await Promise.all([initFocus(), initTodos(), initLinks()]);
+void start(initClock);
+void start(initPanels);
+void start(initSettingsForm);
+void start(initSearch);
+void start(initQuote);
+void start(() => initWeather(() => openPanel('settings-panel')));
+await Promise.all([start(initFocus), start(initTodos), start(initLinks)]);
 markReady();
