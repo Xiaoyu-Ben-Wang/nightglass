@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap");
-
 /* ---------- page and sky ---------- */
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -53,6 +51,9 @@ body::after {
 .moon__ticks { stroke: var(--ink-3); stroke-width: 0.6; }
 .moon__ring { fill: color-mix(in srgb, var(--ink-2) 6%, transparent); stroke: color-mix(in srgb, var(--ink-2) 22%, transparent); stroke-width: 0.5; }
 .moon__lit { fill: var(--ink); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ink) 35%, transparent)); }
+.moon__maria { fill: color-mix(in srgb, var(--ink) 40%, #1b1f27); opacity: 0.42; }
+.moon__rays { stroke: white; stroke-width: 0.9; stroke-linecap: round; opacity: 0.1; }
+.moon__craters { fill: color-mix(in srgb, var(--ink) 60%, #1b1f27); stroke: white; stroke-width: 0.35; stroke-opacity: 0.18; opacity: 0.5; }
 .moon__label { font: 10px / 1 var(--font-mono); letter-spacing: var(--label-tracking); text-transform: uppercase; color: var(--ink-3); }
 [hidden] { display: none !important; }
 
@@ -184,9 +185,8 @@ body::after {
 }
 .center > * { pointer-events: auto; }
 
-/* The date set as Apple's lock screen does: SF Pro where installed, otherwise Inter; semibold, sentence case. */
 .date {
-  font-family: "SF Pro Display", -apple-system, "Inter", system-ui, sans-serif;
+  font-family: var(--font-body);
   font-optical-sizing: auto;
   color: var(--ink);
   margin: 0 0 var(--s-2);

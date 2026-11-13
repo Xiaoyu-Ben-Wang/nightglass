@@ -7,7 +7,6 @@ export function initSettingsForm() {
     const field = (name) => form.elements.namedItem(name);
     const status = $('place-status');
     onSettings((s) => {
-        // Don't overwrite a field while it's being typed in.
         if (document.activeElement !== field('name'))
             field('name').value = s.name;
         if (document.activeElement !== field('place'))

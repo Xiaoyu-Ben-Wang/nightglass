@@ -1,7 +1,7 @@
 // The moon at its real phase, drawn as a lit disc inside a ticked ring.
 import { $ } from './dom.js';
 import { DAY_MS } from './math.js';
-import { onSettings } from './settings.js';
+import { onSettings, settings } from './settings.js';
 const SYNODIC = 29.530588853;
 const NEW_MOON = Date.UTC(2000, 0, 6, 18, 14); // a known new moon
 const NAMES = ['New moon', 'Waxing crescent', 'First quarter', 'Waxing gibbous', 'Full moon', 'Waning gibbous', 'Last quarter', 'Waning crescent'];
@@ -27,11 +27,21 @@ function ticks() {
         return `M${f(Math.cos(a) * r1)} ${f(Math.sin(a) * r1)}L${f(Math.cos(a) * r2)} ${f(Math.sin(a) * r2)}`;
     }).join('');
 }
+const litShare = (p) => (1 - Math.cos(p * 2 * Math.PI)) / 2;
+/** The disc's center as screen fractions from the top left, and how much of it is lit (0 when switched off). */
+export function moonPlace() {
+    if (!settings().sky.moon)
+        return { x: 0, y: 0, lit: 0 };
+    const r = $('moon').querySelector('svg').getBoundingClientRect();
+    return { x: (r.left + r.width / 2) / innerWidth, y: (r.top + r.height / 2) / innerHeight, lit: litShare(moonPhase()) };
+}
 function render() {
     const p = moonPhase();
-    const lit = Math.round(((1 - Math.cos(p * 2 * Math.PI)) / 2) * 100);
+    const lit = Math.round(litShare(p) * 100);
     const name = NAMES[Math.round(p * 8) % 8];
     $('moon-disc').setAttribute('d', litPath(p));
+    // The surface shows only on the lit part.
+    document.getElementById('moon-clip-path').setAttribute('d', litPath(p));
     $('moon-label').textContent = `${name} · ${lit}%`;
     $('moon').title = `${name}, ${lit}% lit`;
 }

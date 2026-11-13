@@ -6,6 +6,7 @@ export interface SkyOptions {
   clouds?: boolean;
   mountains?: boolean;
   koi?: boolean;
+  jellyfish?: boolean;
   pole?: [number, number];
   fish?: number;
   skyTurnSeconds?: number;

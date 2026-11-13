@@ -1,10 +1,11 @@
 // Polar Sky: a pond reflecting the night sky. A GPU aurora (2D fallback), stars wheeling about Polaris,
 // a polar star chart of real constellations, shooting stars, stratus clouds, faceted moonlit mountain
-// ranges with snow, pines and mist, and ASCII koi that ripple the water and follow or flee the cursor.
+// ranges with snow, pines and mist, ASCII koi that ripple the water and follow or flee the cursor, and
+// ASCII jellyfish that pulse slowly upward, trailing their tentacles.
 //
 // Colours: --sky-ink (stars, chart lines, labels), --sky-rim (moonlit ridges, the pole pointer),
 // --sky-glow / --sky-mid / --sky-deep (the background gradient stops).
-import { stage, rand, seeded, clamp, TAU } from './_core.js';
+import { stage, rand, seeded, clamp, glowSprite, TAU } from './_core.js';
 
 export const meta = {
   name: 'sky',
@@ -17,6 +18,7 @@ export const meta = {
     clouds: true,
     mountains: true,
     koi: true,
+    jellyfish: true,
     pole: [0.7, 0.3], // Polaris, as fractions of width and height
     fish: 0, // 0 = by area
     skyTurnSeconds: 900, // one full turn of the sky
@@ -41,6 +43,33 @@ const KOI = [
   { odds: 0.15, base: '96, 168, 180', spot: '124, 192, 224' },
 ];
 const EYE = '8, 9, 14';
+// pale blue, violet, teal and rose bells; spot colours the rings inside the bell and the frilled oral arms
+const JELLY = [
+  { rgb: [150, 196, 238], spot: '206, 226, 250' },
+  { rgb: [176, 156, 232], spot: '224, 196, 246' },
+  { rgb: [112, 206, 204], spot: '186, 240, 226' },
+  { rgb: [218, 170, 214], spot: '246, 212, 232' },
+].map((k) => ({ ...k, base: k.rgb.join(', '), sprite: null }));
+// bell scale: mostly small ones, the odd big one
+const JELLY_SIZES = [
+  { odds: 0.3, size: 0.45 },
+  { odds: 0.3, size: 0.7 },
+  { odds: 0.25, size: 1 },
+  { odds: 0.15, size: 1.6 },
+];
+// The shape a star flashes into at the peak of its twinkle: spikes as [angle in degrees, length], both ways.
+const TWINKLES = [
+  { odds: 0.3, name: 'round', rays: null },
+  { odds: 0.2, name: 'plus', rays: [[0, 1], [90, 1]] },
+  { odds: 0.15, name: 'diagonal', rays: [[45, 1], [135, 1]] },
+  { odds: 0.1, name: 'vertical', rays: [[90, 1]] },
+  { odds: 0.1, name: 'six', rays: [[90, 1], [30, 1], [150, 1]] },
+  { odds: 0.15, name: 'eight', rays: [[0, 1], [90, 1], [45, 0.55], [135, 0.55]] },
+];
+const pickTwinkle = (roll) => {
+  for (const tw of TWINKLES) if ((roll -= tw.odds) < 0) return tw.name;
+  return TWINKLES[0].name;
+};
 
 const BANDS = [
   { y: 0.2, amp: 0.05, freq: 0.0038, speed: 0.12, tall: 0.24, rgb: [70, 240, 170], alpha: 0.2 },
@@ -177,6 +206,34 @@ function inkGlow(ink) {
   return c;
 }
 
+// Thin tapered spikes through a small bright core, fading toward their tips.
+function inkSpikes(ink, rays) {
+  const c = canvasOf(64, 64);
+  const cc = c.getContext('2d');
+  cc.translate(32, 32);
+  // Gradients follow the transform, so this one is centred on the translated origin.
+  const g = cc.createRadialGradient(0, 0, 0, 0, 0, 32);
+  g.addColorStop(0, `rgba(${ink}, 1)`);
+  g.addColorStop(0.12, `rgba(${ink}, 0.55)`);
+  g.addColorStop(1, `rgba(${ink}, 0)`);
+  cc.fillStyle = g;
+  for (const [deg, len] of rays) {
+    cc.save();
+    cc.rotate((-deg * Math.PI) / 180);
+    cc.beginPath();
+    cc.moveTo(-32 * len, 0);
+    cc.lineTo(0, -2.2);
+    cc.lineTo(32 * len, 0);
+    cc.lineTo(0, 2.2);
+    cc.fill();
+    cc.restore();
+  }
+  cc.beginPath();
+  cc.arc(0, 0, 3.5, 0, TAU);
+  cc.fill();
+  return c;
+}
+
 // Thin stratus wisps: soft puffs squashed flat.
 function cloudSprite(width) {
   const height = width * 0.14;
@@ -242,7 +299,7 @@ export default function mount(canvas, opts = {}) {
     glyphs: new Map(),
     rays: null,
     gl: undefined, // undefined = not tried yet, null = unavailable
-    stars: [], clouds: [], meteors: [], fish: [], ripples: [],
+    stars: [], clouds: [], meteors: [], fish: [], jellies: [], ripples: [],
     nextMeteor: 0, nextDrop: 0,
     stopped: false,
   };
@@ -260,6 +317,7 @@ export default function mount(canvas, opts = {}) {
     st.rim = s.rgb('--sky-rim', RIM).join(', ');
     st.bgStops = [s.css('--sky-glow', BG[0]), s.css('--sky-mid', BG[1]), s.css('--sky-deep', BG[2])];
     st.glow = inkGlow(st.ink);
+    st.twinkles = Object.fromEntries(TWINKLES.map((tw) => [tw.name, tw.rays ? inkSpikes(st.ink, tw.rays) : st.glow]));
     st.glyphs.clear();
   }
 
@@ -293,7 +351,8 @@ export default function mount(canvas, opts = {}) {
         dist: reach * Math.sqrt(Math.random()),
         r: big ? rand(1, 1.5) : rand(0.35, 0.9),
         big,
-        base: big ? rand(0.6, 0.9) : rand(0.15, 0.6),
+        base: big ? rand(0.7, 1) : rand(0.22, 0.7),
+        twinkle: pickTwinkle(Math.random()),
         speed: rand(0.5, 2),
         phase: rand(0, TAU),
       };
@@ -329,6 +388,7 @@ export default function mount(canvas, opts = {}) {
       return { sprite, x: rand(-sprite.width, s.w), y: rand(s.h * 0.38, s.h * 0.8) - sprite.height / 2, v: rand(3, 9) };
     });
     buildFish(s);
+    buildJellies(s);
     st.meteors = [];
     const now = s.t * 1000;
     st.nextMeteor = now + 1500;
@@ -523,6 +583,155 @@ export default function mount(canvas, opts = {}) {
       put(Math.floor(ex / CELL), Math.floor(ey / CELL), 'o', EYE, 9);
     }
     ctx.globalAlpha = 0.15 + 0.4 * f.depth;
+    const size = CELL * 1.6;
+    const off = CELL / 2 - CELL * 0.8;
+    for (const c of cells.values()) ctx.drawImage(glyph(s, c.ch, c.rgb), c.gx * CELL + off, c.gy * CELL + off, size, size);
+    ctx.globalAlpha = 1;
+  }
+
+  // ---------- jellyfish ----------
+
+  function buildJellies(s) {
+    const n = Math.max(3, Math.min(7, Math.round((s.w * s.h) / 320000)));
+    st.jellies = Array.from({ length: n }, () => makeJelly(s, rand(s.h * 0.15, s.h * 0.9)));
+    st.jellies.sort((a, b) => a.depth - b.depth);
+    // a few seconds of drifting up front, so the tentacles already trail
+    for (let i = 0; i < 120; i++) for (const j of st.jellies) drift(s, j, i * 33, 1 / 30);
+  }
+
+  function makeJelly(s, y) {
+    const depth = rand(0.4, 1);
+    let roll = Math.random();
+    const { size } = JELLY_SIZES.find((k) => (roll -= k.odds) < 0) || JELLY_SIZES[0];
+    const r = rand(4.5, 7) * CELL * size * (0.6 + 0.4 * depth);
+    const x = rand(s.w * 0.05, s.w * 0.95);
+    const arms = Math.max(3, Math.round(rand(2, 4) + size * 2.5));
+    const long = (n) => Math.max(3, Math.round(n * Math.sqrt(size) * (0.6 + 0.4 * depth)));
+    const tentacle = (at, oral) => ({
+      at,
+      oral,
+      seg: CELL * (oral ? 0.8 : rand(0.85, 1.1)),
+      sway: rand(0, TAU),
+      pts: Array.from({ length: long(oral ? rand(5, 8) : rand(7, 12)) }, (_, k) => ({ x, y: y + k * CELL })),
+    });
+    return {
+      x, y, vx: 0, vy: 0,
+      a: -Math.PI / 2 + rand(-0.3, 0.3),
+      // each one leans its climb a little off vertical
+      lean: rand(-0.3, 0.3),
+      r,
+      size,
+      depth,
+      kind: JELLY[Math.floor(Math.random() * JELLY.length)],
+      // little ones beat faster
+      period: rand(2.6, 4.2) * (0.6 + 0.4 * size),
+      phase: rand(0, 1),
+      squeeze: 0,
+      tentacles: [
+        ...Array.from({ length: arms }, (_, i) => tentacle((i / (arms - 1)) * 1.8 - 0.9, false)),
+        // tiny ones have no room for the frilled arms
+        ...(size < 0.6 ? [] : [tentacle(-0.2, true), tentacle(0.2, true)]),
+      ],
+    };
+  }
+
+  // The bell snaps shut, then slowly relaxes open; only the snap pushes it along.
+  function drift(s, j, now, dt) {
+    const u = (now / 1000 / j.period + j.phase) % 1;
+    j.squeeze = u < 0.15 ? Math.sin((u / 0.15) * (Math.PI / 2)) : u < 0.6 ? Math.cos(((u - 0.15) / 0.45) * (Math.PI / 2)) : 0;
+    j.a += turnToward(j.a, -Math.PI / 2 + j.lean) * Math.min(1, dt * 0.6);
+    const fx = Math.cos(j.a);
+    const fy = Math.sin(j.a);
+    if (u < 0.15) {
+      const push = 80 * (0.6 + 0.4 * j.depth) * dt;
+      j.vx += fx * push;
+      j.vy += fy * push;
+    }
+    const drag = Math.exp(-dt * 1.3);
+    j.vx *= drag;
+    j.vy = j.vy * drag + 3 * dt;
+    j.x += j.vx * dt;
+    j.y += j.vy * dt;
+
+    const nx = -fy;
+    const ny = fx;
+    const w = j.r * (1 - 0.22 * j.squeeze);
+    for (const tn of j.tentacles) {
+      const head = tn.pts[0];
+      head.x = j.x + nx * tn.at * w * 0.85;
+      head.y = j.y + ny * tn.at * w * 0.85;
+      for (let k = 1; k < tn.pts.length; k++) {
+        const p = tn.pts[k - 1];
+        const q = tn.pts[k];
+        // sink a little and sway, so a resting jelly's tentacles hang and wave
+        const wave = Math.sin((now / 1000) * 1.4 + tn.sway + k * 0.55) * 35 * dt;
+        q.x += -fx * 5 * dt + nx * wave;
+        q.y += -fy * 5 * dt + ny * wave;
+        const L = Math.hypot(q.x - p.x, q.y - p.y) || 1;
+        q.x = p.x + ((q.x - p.x) / L) * tn.seg;
+        q.y = p.y + ((q.y - p.y) / L) * tn.seg;
+      }
+    }
+
+    // gone off the top: a new one rises from below; off a side: it comes back on the other
+    const reach = j.r * 2 + CELL * 12;
+    if (j.y < -reach) Object.assign(j, makeJelly(s, s.h + reach));
+    const dx = j.x < -reach ? s.w + 2 * reach : j.x > s.w + reach ? -s.w - 2 * reach : 0;
+    if (dx) {
+      j.x += dx;
+      for (const tn of j.tentacles) for (const p of tn.pts) p.x += dx;
+    }
+  }
+
+  function drawJelly(s, j) {
+    const ctx = s.ctx;
+    const cells = new Map();
+    const put = (gx, gy, ch, rgb, rank) => {
+      const key = gx * 65536 + gy;
+      const had = cells.get(key);
+      if (!had || had.rank < rank) cells.set(key, { gx, gy, ch, rgb, rank });
+    };
+    const k = j.kind;
+    for (const tn of j.tentacles) {
+      const n = tn.pts.length;
+      tn.pts.forEach((p, i) => {
+        const gx = Math.floor(p.x / CELL);
+        const gy = Math.floor(p.y / CELL);
+        if (tn.oral) put(gx, gy, (i + gy) % 2 ? '{' : '}', k.spot, 2);
+        else put(gx, gy, i > n * 0.65 ? '.' : i > n * 0.3 ? ':' : '|', k.base, 1);
+      });
+    }
+    // the bell: a dome along its heading, narrower and taller while it squeezes
+    const fx = Math.cos(j.a);
+    const fy = Math.sin(j.a);
+    const w = j.r * (1 - 0.22 * j.squeeze);
+    const H = j.r * (0.85 + 0.3 * j.squeeze);
+    const span = Math.ceil(Math.max(w, H) / CELL) + 1;
+    const cx0 = Math.floor(j.x / CELL);
+    const cy0 = Math.floor(j.y / CELL);
+    for (let gy = cy0 - span; gy <= cy0 + span; gy++) {
+      for (let gx = cx0 - span; gx <= cx0 + span; gx++) {
+        const dx = (gx + 0.5) * CELL - j.x;
+        const dy = (gy + 0.5) * CELL - j.y;
+        const fwd = dx * fx + dy * fy;
+        const side = dy * fx - dx * fy;
+        if (fwd < -CELL * 0.5) continue;
+        const e = Math.sqrt((side / w) ** 2 + (Math.max(0, fwd) / H) ** 2);
+        if (e > 1) continue;
+        if (fwd < CELL * 0.5) put(gx, gy, '~', k.base, 3);
+        else if (e > 0.78) put(gx, gy, '#', k.base, 4);
+        else if (e > 0.62) put(gx, gy, '*', k.base, 3);
+        // a ring around the middle, like a moon jelly's
+        else if (e > 0.22 && e < 0.48 && fwd > H * 0.15) put(gx, gy, 'o', k.spot, 5);
+        else put(gx, gy, e < 0.22 ? ':' : '.', k.base, 2);
+      }
+    }
+    const glow = 0.85 + 0.15 * j.squeeze;
+    if (!k.sprite) k.sprite = glowSprite(k.rgb, 64, 0.5);
+    const g = j.r * 4.5;
+    ctx.globalAlpha = (0.08 + 0.12 * j.depth) * glow;
+    ctx.drawImage(k.sprite, j.x + fx * H * 0.4 - g / 2, j.y + fy * H * 0.4 - g / 2, g, g);
+    ctx.globalAlpha = (0.15 + 0.4 * j.depth) * glow;
     const size = CELL * 1.6;
     const off = CELL / 2 - CELL * 0.8;
     for (const c of cells.values()) ctx.drawImage(glyph(s, c.ch, c.rgb), c.gx * CELL + off, c.gy * CELL + off, size, size);
@@ -791,7 +1000,8 @@ export default function mount(canvas, opts = {}) {
       const x = cx + Math.cos(star.angle + turn) * star.dist;
       const y = cy + Math.sin(star.angle + turn) * star.dist;
       if (x < -10 || y < -10 || x > w + 10 || y > h + 10) continue;
-      const a = star.base * (0.65 + 0.35 * Math.sin(t * star.speed + star.phase));
+      const wave = Math.sin(t * star.speed + star.phase);
+      const a = star.base * (0.65 + 0.35 * wave);
       ctx.globalAlpha = a;
       ctx.beginPath();
       ctx.arc(x, y, star.r, 0, TAU);
@@ -800,8 +1010,19 @@ export default function mount(canvas, opts = {}) {
         ctx.globalAlpha = a * 0.6;
         ctx.drawImage(st.glow, x - 9, y - 9, 18, 18);
       }
+      flare(ctx, star.twinkle, x, y, star.big ? 26 : 10 + 12 * star.r, a, wave);
     }
     ctx.globalAlpha = 1;
+  }
+
+  // At the top of its twinkle a star briefly flashes into its shape.
+  function flare(ctx, twinkle, x, y, size, alpha, wave) {
+    if (wave <= 0.6) return;
+    const peak = ((wave - 0.6) / 0.4) ** 2;
+    const sprite = st.twinkles[twinkle];
+    const d = size * (0.55 + 0.45 * peak);
+    ctx.globalAlpha = alpha * peak * (sprite === st.glow ? 0.6 : 0.9);
+    ctx.drawImage(sprite, x - d / 2, y - d / 2, d, d);
   }
 
   // Polar star chart pivoting on Polaris, which stays put while everything else turns with the sky:
@@ -886,7 +1107,7 @@ export default function mount(canvas, opts = {}) {
 
     for (const c of CONSTELLATIONS) {
       const pts = c.stars.map(place);
-      ctx.strokeStyle = ink(0.13);
+      ctx.strokeStyle = ink(0.19);
       ctx.beginPath();
       for (const [i, j] of c.lines) {
         ctx.moveTo(pts[i][0], pts[i][1]);
@@ -897,15 +1118,19 @@ export default function mount(canvas, opts = {}) {
       c.stars.forEach(([, , mag], i) => {
         const [x, y] = pts[i];
         const bright = Math.max(0, 1 - mag / 5.5);
-        ctx.globalAlpha = 0.35 + 0.6 * bright;
+        ctx.globalAlpha = 0.45 + 0.55 * bright;
         ctx.beginPath();
         ctx.arc(x, y, 0.6 + 1.5 * bright, 0, TAU);
         ctx.fill();
         if (mag < 2.2) {
-          ctx.globalAlpha = 0.5 * bright;
+          ctx.globalAlpha = 0.6 * bright;
           const g = 8 + 14 * bright;
           ctx.drawImage(st.glow, x - g / 2, y - g / 2, g, g);
         }
+        // Each star's shape and rhythm come from its magnitude and place, so they stay put between frames.
+        const k = Math.abs(Math.sin(mag * 12.9898 + i * 78.233 + c.stars.length) * 43758.5453) % 1;
+        const wave = Math.sin(t * (0.5 + 1.5 * k) + k * TAU * 7);
+        flare(ctx, pickTwinkle(k), x, y, 12 + 18 * bright, 0.45 + 0.55 * bright, wave);
       });
       ctx.globalAlpha = 1;
     }
@@ -1002,6 +1227,12 @@ export default function mount(canvas, opts = {}) {
       if (!st.horizon) drawHorizon(s);
       ctx.drawImage(st.horizon, 0, 0, w, h);
     }
+    if (o.jellyfish) {
+      for (const j of st.jellies) {
+        if (moving) drift(s, j, now, dt);
+        drawJelly(s, j);
+      }
+    }
     if (o.koi) {
       for (const f of st.fish) {
         if (moving) swim(s, f, now, dt);
@@ -1024,7 +1255,19 @@ export default function mount(canvas, opts = {}) {
     draw,
     // a tap on the water: curious fish come over, skittish ones scatter
     pointerdown(s, x, y) {
-      if (!s.still) ripple(x, y, 90, 0.9, true);
+      if (s.still) return;
+      ripple(x, y, 90, 0.9, true);
+      // and nudges nearby jellyfish away
+      for (const j of st.jellies) {
+        const dx = j.x - x;
+        const dy = j.y - y;
+        const d = Math.hypot(dx, dy) || 1;
+        if (d < 220) {
+          const push = 60 * (1 - d / 220);
+          j.vx += (dx / d) * push;
+          j.vy += (dy / d) * push;
+        }
+      }
     },
     options(s, next) {
       if (!s.w) return;

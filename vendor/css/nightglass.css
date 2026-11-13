@@ -4,7 +4,6 @@
  * Condensed caps for section titles, mono caps for controls, powder-blue accent light enough
  * to carry dark text, aurora green for success.
  */
-@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Cormorant+Garamond:ital,wght@1,500&display=swap");
 
 [data-ds="nightglass"] {
   --night: #05060a;

@@ -12,7 +12,7 @@ const DEFAULTS = {
     weatherFx: true,
     quoteApi: 'https://api.quotable.io/quotes/random?maxLength=140',
     show: { links: true, search: true, weather: true, focus: true, quote: true, todo: true },
-    sky: { moon: true, chart: true, meteors: false },
+    sky: { moon: true, chart: true, meteors: false, koi: true, jellyfish: true },
 };
 const KEY = 'settings';
 let current = DEFAULTS;
@@ -28,12 +28,21 @@ function known(defaults, saved) {
 function merge(saved) {
     return { ...known(DEFAULTS, saved), show: known(DEFAULTS.show, saved?.show), sky: known(DEFAULTS.sky, saved?.sky) };
 }
+let markLoaded;
+/** Resolves once the stored settings have been read, which can be after the page starts on the defaults. */
+export const settingsLoaded = new Promise((resolve) => { markLoaded = resolve; });
 export async function initSettings() {
-    current = merge(await load('sync', KEY, {}));
     watch(KEY, (v) => {
         current = merge(v);
         subscribers.forEach((fn) => fn(current));
+        markLoaded();
     });
+    const timedOut = {};
+    const saved = await load('sync', KEY, {}, timedOut);
+    current = merge(saved);
+    // A late read arrives through watch instead.
+    if (saved !== timedOut)
+        markLoaded();
     return current;
 }
 export const settings = () => current;
@@ -42,6 +51,10 @@ export function onSettings(fn) {
     fn(current);
 }
 export async function updateSettings(patch) {
+    current = merge({ ...current, ...patch });
+    subscribers.forEach((fn) => fn(current));
+    // Saving before the stored settings arrive would overwrite them with the defaults.
+    await settingsLoaded;
     current = merge({ ...current, ...patch });
     subscribers.forEach((fn) => fn(current));
     await save('sync', KEY, current);

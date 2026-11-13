@@ -3,13 +3,36 @@ const listeners = new Map();
 // Values this tab wrote whose onChanged echo hasn't arrived yet. A late echo of an older
 // write would otherwise overwrite newer local state.
 const pending = new Map();
-export async function load(area, key, fallback) {
-    if (hasChrome) {
-        const got = await chrome.storage[area].get(key);
-        return got[key] ?? fallback;
+// chrome.storage can stall for seconds while the browser is starting up.
+const STARTUP_WAIT = 1500;
+async function read(area, key, fallback) {
+    try {
+        if (hasChrome) {
+            const got = await chrome.storage[area].get(key);
+            return got[key] ?? fallback;
+        }
+        const raw = localStorage.getItem(`${area}:${key}`);
+        return raw === null ? fallback : JSON.parse(raw);
     }
-    const raw = localStorage.getItem(`${area}:${key}`);
-    return raw === null ? fallback : JSON.parse(raw);
+    catch (err) {
+        console.error(`Couldn't read ${key}`, err);
+        return fallback;
+    }
+}
+/** Resolves with onTimeout if storage takes longer than STARTUP_WAIT; the stored value then goes to the key's watchers. */
+export function load(area, key, fallback, onTimeout = fallback) {
+    const value = read(area, key, fallback);
+    return new Promise((resolve) => {
+        let late = false;
+        const timer = setTimeout(() => { late = true; resolve(onTimeout); }, STARTUP_WAIT);
+        void value.then((v) => {
+            clearTimeout(timer);
+            if (late)
+                emit(key, v);
+            else
+                resolve(v);
+        });
+    });
 }
 export async function save(area, key, value) {
     if (hasChrome) {

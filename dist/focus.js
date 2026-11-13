@@ -10,7 +10,6 @@ const text = $('focus-text');
 const done = $('focus-done');
 let focus = null;
 function render() {
-    // Yesterday's focus doesn't carry over.
     const current = focus && focus.day === today() ? focus : null;
     form.hidden = !!current;
     box.hidden = !current;
