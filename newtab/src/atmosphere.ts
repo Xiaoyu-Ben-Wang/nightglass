@@ -1,5 +1,5 @@
 // The sun, clouds and god rays in WebGL2: three cloud inks in a stable-fluids simulation, lit by sunlight marched through them.
-import { clamp, mixRGB } from './math.js';
+import { clamp, grey, mixRGB } from './math.js';
 import { MASK_SCALE, textMask } from './text-mask.js';
 
 export interface AtmosphereInput {
@@ -492,7 +492,6 @@ export function renderAtmosphere(dt: number, p: AtmosphereInput): void {
   if (!gl) return;
   const cloudy = p.cover >= 0.005;
   const sunVis = clamp((p.sun.elev + 1.5) / 3) * p.sun.vis * p.day;
-  // Rays come from the sun while it shows, otherwise from the moon.
   const bySun = sunVis > SUN_VISIBLE;
   const rayVis = bySun ? sunVis : p.moon.vis * MOON_RAYS;
   const shining = rayVis > SUN_VISIBLE;
@@ -530,9 +529,10 @@ export function renderAtmosphere(dt: number, p: AtmosphereInput): void {
     pass('rays', rays, { uSource: dye.read, uMask: mask, uMaskScale: MASK_SCALE, uSun: from, uRes: res, uCloudOn: cloudOn });
     pass('beams', beams, { uRays: rays, uSun: from, uRes: res });
   }
-  const lit = mixRGB(mixRGB([0.36, 0.39, 0.45], [0.95, 0.96, 0.98], p.day), [0.62, 0.65, 0.7], p.dark * 0.6);
-  const shade = mixRGB(mixRGB([0.16, 0.18, 0.22], [0.58, 0.62, 0.69], p.day), [0.3, 0.32, 0.37], p.dark * 0.7);
-  const low = mixRGB(mixRGB([0.2, 0.22, 0.27], [0.7, 0.74, 0.8], p.day), [0.34, 0.36, 0.41], p.dark * 0.7);
+  const overcast = clamp((p.cover - 0.7) / 0.3) * 0.85;
+  const lit = grey(mixRGB(mixRGB([0.36, 0.39, 0.45], [0.95, 0.96, 0.98], p.day), [0.62, 0.65, 0.7], p.dark * 0.6), overcast);
+  const shade = grey(mixRGB(mixRGB([0.16, 0.18, 0.22], [0.58, 0.62, 0.69], p.day), [0.3, 0.32, 0.37], p.dark * 0.7), overcast);
+  const low = grey(mixRGB(mixRGB([0.2, 0.22, 0.27], [0.7, 0.74, 0.8], p.day), [0.34, 0.36, 0.41], p.dark * 0.7), overcast);
   pass('display', null, {
     uSource: dye.read, uBeams: beams, uLight: light, uSun: sun, uRes: res, uSunR: sunR, uSunCol: sunCol, uSunVis: sunVis,
     uRayStrength: shining ? rayVis : 0, uRayCol: bySun ? sunCol : MOON_COL, uCloudOn: cloudOn,
@@ -567,7 +567,6 @@ export function initAtmosphere(el: HTMLCanvasElement, shadow?: HTMLElement): voi
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  // Empty until the text is first drawn.
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
   resizeAtmosphere();
   addEventListener('pointermove', (e) => {

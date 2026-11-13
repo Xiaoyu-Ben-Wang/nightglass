@@ -2,7 +2,7 @@
 import { initAtmosphere, renderAtmosphere, resizeAtmosphere } from './atmosphere.js';
 import { nightness, sunPlace } from './daylight.js';
 import { moonPlace } from './moon.js';
-import { clamp, mixRGB, rgba, type RGB } from './math.js';
+import { clamp, grey, mixRGB, rgba, type RGB } from './math.js';
 import { reducedMotion } from './motion.js';
 import { onSettings, settings } from './settings.js';
 
@@ -158,19 +158,22 @@ function dayness(): number {
 }
 
 function retone(d: number): void {
-  const k = Math.round(cur.dark * 10) / 10, dd = Math.round(d * 10) / 10;
-  const key = `${k},${dd}`;
+  const k = Math.round(cur.dark * 10) / 10, dd = Math.round(d * 10) / 10, o = Math.round(overcast() * 10) / 10;
+  const key = `${k},${dd},${o}`;
   if (key === toneKey) return;
   toneKey = key;
-  lit = mixRGB(mixRGB([62, 68, 82], [196, 203, 215], dd), [88, 95, 110], k * 0.8);
-  base = mixRGB(mixRGB([30, 34, 41], [122, 133, 152], dd), [38, 42, 50], k * 0.85);
+  lit = grey(mixRGB(mixRGB([62, 68, 82], [196, 203, 215], dd), [88, 95, 110], k * 0.8), o * 0.85);
+  base = grey(mixRGB(mixRGB([30, 34, 41], [122, 133, 152], dd), [38, 42, 50], k * 0.85), o * 0.85);
   fogCol = mixRGB([80, 86, 100], [168, 176, 190], dd);
   for (const b of bands) b.sprite = fogSprite(b.w, fogCol);
 }
 
+/** How fully the sky is clouded over, which greys the clouds. */
+const overcast = (): number => clamp((cur.cover - 0.7) / 0.3);
+
 /** Overcast deck: a flat sheet of cloud color that hides the stars and dims the sky. */
-function drawDeck(): void {
-  const a = clamp((cur.cover - 0.45) * 1.8) * (0.4 + 0.25 * cur.dark);
+function drawDeck(d: number): void {
+  const a = clamp((cur.cover - 0.45) * 1.8) * (0.4 + 0.25 * cur.dark + 0.3 * overcast() * d);
   if (a <= 0.005) return;
   const g = ctx.createLinearGradient(0, 0, 0, h);
   g.addColorStop(0, rgba(base, a));
@@ -204,7 +207,6 @@ function drawRain(dt: number, d: number): void {
   if (!n) return;
   const col: RGB = mixRGB([150, 165, 190], [200, 215, 235], d);
   const lenScale = 0.55 + 0.45 * cur.rain;
-  // Three depth buckets, one stroke each.
   for (const [lo, hi, width, alpha] of [[0, 0.5, 0.7, 0.1], [0.5, 0.8, 0.9, 0.17], [0.8, 1.01, 1.1, 0.26]] as const) {
     ctx.beginPath();
     for (let i = 0; i < n; i++) {
@@ -351,7 +353,7 @@ function frame(t: number, dt: number): void {
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
-  drawDeck();
+  drawDeck(d);
   drawFog(dt);
   drawStorm(t, dt);
   const sun = sunPlace();
@@ -446,7 +448,7 @@ export function initScene(): void {
   new MutationObserver(redraw).observe(time, { childList: true, subtree: true, characterData: true });
   const sizes = new ResizeObserver(redraw);
   for (const el of time.parentElement!.children) sizes.observe(el);
-  // fonts arrive after first paint; redraw when each batch lands
+  // Fonts arrive after first paint, which moves the digits.
   document.fonts.addEventListener('loadingdone', redraw);
   void document.fonts.ready.then(redraw);
   // With no weather to animate the loop stops; the sun still moves, so redraw once a minute.

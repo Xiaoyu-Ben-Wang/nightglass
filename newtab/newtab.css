@@ -185,9 +185,8 @@ body::after {
 }
 .center > * { pointer-events: auto; }
 
-/* The date set as Apple's lock screen does: SF Pro where installed, otherwise Inter; semibold, sentence case. */
 .date {
-  font-family: "SF Pro Display", -apple-system, "Inter", system-ui, sans-serif;
+  font-family: var(--font-body);
   font-optical-sizing: auto;
   color: var(--ink);
   margin: 0 0 var(--s-2);

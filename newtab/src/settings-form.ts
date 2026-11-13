@@ -9,7 +9,6 @@ export function initSettingsForm(): void {
   const status = $('place-status');
 
   onSettings((s) => {
-    // Don't overwrite a field while it's being typed in.
     if (document.activeElement !== field('name')) field('name').value = s.name;
     if (document.activeElement !== field('place')) field('place').value = s.place?.name ?? '';
     if (document.activeElement !== field('quoteApi')) field('quoteApi').value = s.quoteApi;

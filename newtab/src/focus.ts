@@ -15,7 +15,6 @@ const done = $<HTMLInputElement>('focus-done');
 let focus: Focus | null = null;
 
 function render(): void {
-  // Yesterday's focus doesn't carry over.
   const current = focus && focus.day === today() ? focus : null;
   form.hidden = !!current;
   box.hidden = !current;
